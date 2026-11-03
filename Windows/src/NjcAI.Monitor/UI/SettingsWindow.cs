@@ -6,6 +6,8 @@ using NjcAI.Monitor.Core;
 using Brushes = System.Windows.Media.Brushes;
 using Button = System.Windows.Controls.Button;
 using CheckBox = System.Windows.Controls.CheckBox;
+using ComboBox = System.Windows.Controls.ComboBox;
+using ComboBoxItem = System.Windows.Controls.ComboBoxItem;
 using Color = System.Windows.Media.Color;
 using FontFamily = System.Windows.Media.FontFamily;
 using TextBox = System.Windows.Controls.TextBox;
@@ -24,6 +26,7 @@ internal sealed class SettingsWindow : Window
     private readonly TextBox _weatherLocation;
     private readonly TextBox _weatherLatitude;
     private readonly TextBox _weatherLongitude;
+    private readonly ComboBox _colorTheme;
     private AppSettings _settings;
 
     public event Action<AppSettings>? Saved;
@@ -51,6 +54,31 @@ internal sealed class SettingsWindow : Window
         root.Children.Add(Label("右侧 MEMORY 固定；前四栏按活跃会话自动补位", 12, false,
             Color.FromRgb(150, 160, 182)));
         root.Children.Add(Separator(12));
+
+        root.Children.Add(Label("颜色主题", 15, true));
+        _colorTheme = new ComboBox
+        {
+            Height = 34,
+            Margin = new Thickness(0, 7, 0, 8),
+            Padding = new Thickness(8, 3, 8, 3),
+            FontFamily = new FontFamily("Microsoft YaHei UI"),
+            FontSize = 13,
+            Foreground = Brushes.White,
+            Background = new SolidColorBrush(Color.FromRgb(34, 43, 61)),
+            BorderBrush = new SolidColorBrush(Color.FromRgb(61, 72, 94)),
+        };
+        foreach (var theme in Enum.GetValues<ColorTheme>())
+        {
+            _colorTheme.Items.Add(new ComboBoxItem
+            {
+                Content = theme.DisplayName(),
+                Tag = theme,
+                Foreground = Brushes.White,
+                Background = new SolidColorBrush(Color.FromRgb(34, 43, 61)),
+            });
+        }
+        root.Children.Add(_colorTheme);
+        root.Children.Add(Separator(8));
 
         root.Children.Add(Label("天气位置（无活跃 AI 时显示）", 15, true));
         _weatherLocation = CreateTextInput();
@@ -107,7 +135,12 @@ internal sealed class SettingsWindow : Window
         buttons.Children.Add(cancel);
         buttons.Children.Add(save);
         root.Children.Add(buttons);
-        Content = root;
+        Content = new ScrollViewer
+        {
+            Content = root,
+            VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
+            HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled,
+        };
 
         Closing += (_, eventArgs) =>
         {
@@ -130,6 +163,10 @@ internal sealed class SettingsWindow : Window
         _completionNotification.IsChecked = _settings.ShowAgentCompletionNotification;
         _completionSound.IsChecked = _settings.PlayAgentCompletionSound;
         _rotate.IsChecked = _settings.RotateDisplay180;
+        _colorTheme.SelectedItem = _colorTheme.Items
+            .OfType<ComboBoxItem>()
+            .FirstOrDefault(item => item.Tag is ColorTheme theme && theme == _settings.Theme)
+            ?? (ComboBoxItem)_colorTheme.Items[0];
         _quality.Value = _settings.JpegQuality;
         _weatherLocation.Text = _settings.WeatherLocationName;
         _weatherLatitude.Text = _settings.WeatherLatitude.ToString("0.####", CultureInfo.InvariantCulture);
@@ -143,6 +180,10 @@ internal sealed class SettingsWindow : Window
         _settings.ShowAgentCompletionNotification = _completionNotification.IsChecked == true;
         _settings.PlayAgentCompletionSound = _completionSound.IsChecked == true;
         _settings.RotateDisplay180 = _rotate.IsChecked == true;
+        if (_colorTheme.SelectedItem is ComboBoxItem { Tag: ColorTheme theme })
+        {
+            _settings.Theme = theme;
+        }
         _settings.JpegQuality = (int)_quality.Value;
         _settings.WeatherLocationName = string.IsNullOrWhiteSpace(_weatherLocation.Text)
             ? "Sydney"

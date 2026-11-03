@@ -19,6 +19,7 @@ internal sealed class AppSettings
     public int IdleFramesPerSecond { get; set; } = 2;
     public int ActiveFramesPerSecond { get; set; } = 15;
     public bool RotateDisplay180 { get; set; }
+    public ColorTheme Theme { get; set; } = ColorTheme.BitcoinOrange;
     public string WeatherLocationName { get; set; } = "Sydney";
     public double WeatherLatitude { get; set; } = -33.8688;
     public double WeatherLongitude { get; set; } = 151.2093;
@@ -55,6 +56,10 @@ internal sealed class AppSettings
                 var settings = JsonSerializer.Deserialize<AppSettings>(File.ReadAllText(source));
                 if (settings is not null)
                 {
+                    if (!Enum.IsDefined(settings.Theme))
+                    {
+                        settings.Theme = ColorTheme.BitcoinOrange;
+                    }
                     settings.LaunchAtLogin = IsLaunchAtLoginEnabled();
                     if (!string.Equals(source, SettingsPath, StringComparison.OrdinalIgnoreCase))
                     {
