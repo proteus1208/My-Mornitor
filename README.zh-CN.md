@@ -34,6 +34,8 @@
 - 最右一栏固定整合时间、天气、CPU、GPU、内存和进程数；
 - 支持 BGBL.AX、NDQ.AX、IBIT.AX、IVV.AX、USDT/AUD、BTC、ETH 和 WLFI 行情；
 - 使用 TextRadar 新闻和 Open-Meteo 天气；
+- 内置 Bitcoin Orange、Web3 Emerald、Cyber Blue 和 Ultraviolet 四套同构配色主题，
+  所选主题也会同步应用到任务完成提醒；
 - 支持 Trofeo Vision 11.3 的 1920×400 LY USB 协议；
 - 支持托盘运行、登录自启、单实例保护、USB 热插拔、本机预览和 180° 旋转；
 - 发布包自带程序运行环境和 USB 依赖，不要求用户另外安装 .NET。
@@ -71,6 +73,7 @@ NJC AI Monitor.exe
 ```
 
 程序会驻留系统托盘。双击托盘图标打开预览，右键托盘图标可以打开设置、USB 诊断或退出程序。
+在“设置 → 颜色主题”中选择配色并保存，下一帧 LCD 与本机预览会立即更新，重启后仍会保留。
 首次运行若被 Windows SmartScreen 拦截，请在确认下载来源后选择“更多信息”→“仍要运行”。当前社区发布包未进行代码签名。
 
 ## 从源码构建

@@ -12,7 +12,7 @@
     <AssemblyName>NJC AI Monitor</AssemblyName>
     <RepositoryUrl>https://github.com/Nanjiang-Chen/njc-ai-monitor</RepositoryUrl>
     <RootNamespace>NjcAI.Monitor</RootNamespace>
-    <Version>0.1.0</Version>
+    <Version>0.2.0</Version>
     <Authors>NJC AI Monitor contributors</Authors>
     <Description>NJC AI Monitor for the Thermalright Trofeo Vision 11.3 LCD on Windows</Description>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>

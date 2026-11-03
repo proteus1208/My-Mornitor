@@ -219,6 +219,23 @@ internal static class SelfTest
         Assert(jpeg.Length > 10_000 && jpeg.Length <= LyProtocol.MaximumJpegSize, "JPEG size");
         Assert(jpeg[0] == 0xFF && jpeg[1] == 0xD8, "JPEG signature");
 
+        foreach (var theme in Enum.GetValues<ColorTheme>())
+        {
+            settings.Theme = theme;
+            using var themedBitmap = renderer.Render(DemoData.Create(), settings, theme.DisplayName());
+            var themedJpeg = DashboardRenderer.EncodeJpeg(themedBitmap, 82, false);
+            Assert(themedBitmap.Width == DashboardRenderer.Width &&
+                   themedBitmap.Height == DashboardRenderer.Height &&
+                   themedJpeg.Length <= LyProtocol.MaximumJpegSize,
+                $"{theme.DisplayName()} theme renders within LCD limits");
+        }
+        Assert(Enum.GetValues<ColorTheme>()
+                   .Select(theme => ThemePalette.For(theme).AccentPrimary.ToArgb())
+                   .Distinct()
+                   .Count() == Enum.GetValues<ColorTheme>().Length,
+            "all color themes use distinct primary accents");
+        settings.Theme = ColorTheme.BitcoinOrange;
+
         var idle = DemoData.Create() with { Agents = AgentsSnapshot.Empty };
         using var idleBitmap = new DashboardRenderer().Render(idle, settings, "天气面板自检");
         Assert(idleBitmap.Width == 1920 && idleBitmap.Height == 400, "idle weather layout dimensions");

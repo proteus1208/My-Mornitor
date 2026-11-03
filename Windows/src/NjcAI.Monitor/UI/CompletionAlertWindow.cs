@@ -3,9 +3,11 @@ using System.Windows.Controls;
 using System.Windows.Media;
 using System.Windows.Media.Effects;
 using NjcAI.Monitor.Core;
+using NjcAI.Monitor.Rendering;
 using Brushes = System.Windows.Media.Brushes;
 using Button = System.Windows.Controls.Button;
 using Color = System.Windows.Media.Color;
+using DrawingColor = System.Drawing.Color;
 using FontFamily = System.Windows.Media.FontFamily;
 
 namespace NjcAI.Monitor.UI;
@@ -16,14 +18,17 @@ internal sealed class CompletionAlertWindow : Window
     private readonly TextBlock _subtitle;
     private readonly Button _acknowledgeAll;
     private readonly StackPanel _items;
+    private readonly Border _root;
+    private ThemePalette _theme;
     private bool _allowClose;
     private string _fingerprint = string.Empty;
 
     public event Action<string>? Acknowledged;
     public event Action? AcknowledgeAllRequested;
 
-    public CompletionAlertWindow()
+    public CompletionAlertWindow(ColorTheme theme = ColorTheme.BitcoinOrange)
     {
+        _theme = ThemePalette.For(theme);
         Title = "NJC AI Monitor — AI 任务完成";
         Width = 430;
         SizeToContent = SizeToContent.Height;
@@ -38,16 +43,16 @@ internal sealed class CompletionAlertWindow : Window
         UseLayoutRounding = true;
         SnapsToDevicePixels = true;
 
-        var root = new Border
+        _root = new Border
         {
             Background = PanelGradient(),
-            BorderBrush = Brush(166, 82, 24),
+            BorderBrush = Brush(_theme.NewsSeparator),
             BorderThickness = new Thickness(2),
             CornerRadius = new CornerRadius(10),
             Padding = new Thickness(16),
             Effect = new DropShadowEffect
             {
-                Color = Color.FromRgb(247, 147, 26),
+                Color = MediaColor(_theme.AccentPrimary),
                 BlurRadius = 28,
                 ShadowDepth = 4,
                 Opacity = 0.26,
@@ -62,7 +67,7 @@ internal sealed class CompletionAlertWindow : Window
         _heading = new TextBlock
         {
             Text = "AI 任务已经完成",
-            Foreground = Brush(255, 92, 53),
+            Foreground = Brush(_theme.AccentStrong),
             FontFamily = Font(),
             FontSize = 20,
             FontWeight = FontWeights.Bold,
@@ -70,7 +75,7 @@ internal sealed class CompletionAlertWindow : Window
         heading.Children.Add(_heading);
         _subtitle = new TextBlock
         {
-            Foreground = Brush(171, 145, 127),
+            Foreground = Brush(_theme.SecondaryText),
             FontFamily = Font(),
             FontSize = 12,
             Margin = new Thickness(0, 4, 0, 0),
@@ -94,8 +99,8 @@ internal sealed class CompletionAlertWindow : Window
             HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled,
             MaxHeight = 500,
         });
-        root.Child = layout;
-        Content = root;
+        _root.Child = layout;
+        Content = _root;
 
         Closing += (_, eventArgs) =>
         {
@@ -106,6 +111,24 @@ internal sealed class CompletionAlertWindow : Window
             eventArgs.Cancel = true;
             Hide();
         };
+    }
+
+    public void ApplyTheme(ColorTheme theme)
+    {
+        _theme = ThemePalette.For(theme);
+        _root.Background = PanelGradient();
+        _root.BorderBrush = Brush(_theme.NewsSeparator);
+        _root.Effect = new DropShadowEffect
+        {
+            Color = MediaColor(_theme.AccentPrimary),
+            BlurRadius = 28,
+            ShadowDepth = 4,
+            Opacity = 0.26,
+        };
+        _heading.Foreground = Brush(_theme.AccentStrong);
+        _subtitle.Foreground = Brush(_theme.SecondaryText);
+        StyleActionButton(_acknowledgeAll, false);
+        _fingerprint = string.Empty;
     }
 
     public void UpdateAlerts(IReadOnlyList<AgentCompletionAlert> alerts)
@@ -171,8 +194,8 @@ internal sealed class CompletionAlertWindow : Window
     {
         var card = new Border
         {
-            Background = Brush(42, 21, 10),
-            BorderBrush = Brush(138, 70, 24),
+            Background = Brush(_theme.AlertCard),
+            BorderBrush = Brush(_theme.ModuleSeparator),
             BorderThickness = new Thickness(1),
             CornerRadius = new CornerRadius(8),
             Padding = new Thickness(12),
@@ -185,7 +208,7 @@ internal sealed class CompletionAlertWindow : Window
         text.Children.Add(new TextBlock
         {
             Text = $"{AgentName(alert.Kind)} · {alert.Project}",
-            Foreground = Brush(246, 241, 236),
+            Foreground = Brush(_theme.PrimaryText),
             FontFamily = Font(),
             FontSize = 15,
             FontWeight = FontWeights.SemiBold,
@@ -194,7 +217,7 @@ internal sealed class CompletionAlertWindow : Window
         text.Children.Add(new TextBlock
         {
             Text = alert.Activity,
-            Foreground = Brush(216, 196, 181),
+            Foreground = Brush(_theme.SecondaryTextBright),
             FontFamily = Font(),
             FontSize = 12,
             TextWrapping = TextWrapping.Wrap,
@@ -204,7 +227,7 @@ internal sealed class CompletionAlertWindow : Window
         text.Children.Add(new TextBlock
         {
             Text = $"完成于 {alert.CompletedAt:MM-dd HH:mm:ss}",
-            Foreground = Brush(171, 145, 127),
+            Foreground = Brush(_theme.SecondaryText),
             FontFamily = Font(),
             FontSize = 11,
             Margin = new Thickness(0, 6, 0, 0),
@@ -230,20 +253,29 @@ internal sealed class CompletionAlertWindow : Window
         Top = Math.Max(workArea.Top + 12, workArea.Bottom - ActualHeight - 18);
     }
 
-    private static Button ActionButton(string text, bool primary) => new()
+    private Button ActionButton(string text, bool primary)
     {
-        Content = text,
-        MinWidth = 82,
-        Height = 32,
-        Padding = new Thickness(10, 0, 10, 0),
-        FontFamily = Font(),
-        FontSize = 12,
-        FontWeight = FontWeights.SemiBold,
-        Foreground = Brush(246, 241, 236),
-        Background = primary ? Brush(217, 106, 0) : Brush(74, 42, 28),
-        BorderBrush = primary ? Brush(217, 106, 0) : Brush(138, 70, 24),
-        BorderThickness = new Thickness(1),
-    };
+        var button = new Button
+        {
+            Content = text,
+            MinWidth = 82,
+            Height = 32,
+            Padding = new Thickness(10, 0, 10, 0),
+            FontFamily = Font(),
+            FontSize = 12,
+            FontWeight = FontWeights.SemiBold,
+            BorderThickness = new Thickness(1),
+        };
+        StyleActionButton(button, primary);
+        return button;
+    }
+
+    private void StyleActionButton(Button button, bool primary)
+    {
+        button.Foreground = Brush(_theme.PrimaryText);
+        button.Background = Brush(primary ? _theme.Quota : _theme.AlertSecondaryButton);
+        button.BorderBrush = Brush(primary ? _theme.Quota : _theme.ModuleSeparator);
+    }
 
     private static string AgentName(AgentKind kind) => kind switch
     {
@@ -252,14 +284,16 @@ internal sealed class CompletionAlertWindow : Window
         _ => "Codex",
     };
 
-    private static SolidColorBrush Brush(byte red, byte green, byte blue) =>
-        new(Color.FromRgb(red, green, blue));
+    private static SolidColorBrush Brush(DrawingColor color) =>
+        new(MediaColor(color));
 
-    private static LinearGradientBrush PanelGradient() => new(
-        Color.FromRgb(50, 25, 12),
-        Color.FromRgb(36, 17, 7),
+    private LinearGradientBrush PanelGradient() => new(
+        MediaColor(_theme.AlertBackgroundStart),
+        MediaColor(_theme.AlertBackgroundEnd),
         new System.Windows.Point(0, 0),
         new System.Windows.Point(1, 1));
+
+    private static Color MediaColor(DrawingColor color) => Color.FromRgb(color.R, color.G, color.B);
 
     private static FontFamily Font() => new("Microsoft YaHei UI");
 }
