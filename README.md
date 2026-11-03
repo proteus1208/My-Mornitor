@@ -1,133 +1,142 @@
 # NJC AI Monitor
 
-[中文](README.md) · [English](README.en.md)
+**English** · [简体中文](README.zh-CN.md)
 
-面向 Windows 10/11 和利民 Trofeo Vision 11.3 LCD 的 AI Agent 桌面监控程序。
-程序会把 Codex、Cursor、Claude Code、本机内存、股票/加密货币行情、新闻和天气
-渲染为 1920×400 五栏仪表盘，并通过 USB 发送到 LCD；没有连接屏幕时也可以使用本机预览。
+A Windows 10/11 AI-agent dashboard for the Thermalright Trofeo Vision 11.3 LCD.
+It renders Codex, Cursor, Claude Code, memory, market, news, and weather data as a
+1920×400 five-column dashboard and sends it to the display over USB. A local preview
+is available when the LCD is disconnected.
 
-## 界面预览
+## Interface previews
 
-### 1. 没有活跃 Agent
+### 1. No active agent
 
-四个动态栏显示 Markets、News、AI Quota 和 Forecast，最右栏保持系统与当前天气信息。
+The four dynamic columns show Markets, News, AI Quota, and Forecast. The fixed system/current-weather column remains visible.
 
-![没有活跃 Agent 时的仪表盘](docs/assets/dashboard-no-agent.png)
+![Dashboard with no active agent](docs/assets/dashboard-no-agent.png)
 
-### 2. 一个 Agent 正在工作
+### 2. One working agent
 
-工作中的 Agent 占据第一栏，其余栏位依次由 Markets、News 和 AI Quota 补齐。
+The working session takes the first column; Markets, News, and AI Quota fill the remaining columns.
 
-![一个 Agent 正在工作时的仪表盘](docs/assets/dashboard-one-working.png)
+![Dashboard with one working agent](docs/assets/dashboard-one-working.png)
 
-### 3. 两个 Agent：工作中与刚完成
+### 3. Two agents: working and just completed
 
-第一栏展示 `Agent Working`，第二栏展示带持续提醒边框的 `Task Completed`，其余两栏为 Markets 和 News。
+The first column shows `Agent Working`, while the second shows `Task Completed` with its persistent attention border. Markets and News occupy the other two columns.
 
-![两个 Agent 分别处于工作中和刚完成状态](docs/assets/dashboard-two-agents.png)
+![Dashboard with one working and one completed agent](docs/assets/dashboard-two-agents.png)
 
-## 主要功能
+## Features
 
-- 左侧四栏优先显示最近活跃的 Codex、Cursor 和 Claude Code 会话，并同时显示工作区与真实聊天标题；
-- Agent 状态统一为 `Agent Working`、`Task Completed` 和 `Waiting for You`；工作状态使用动态边框，完成提醒持续闪烁并显示不会自动消失的桌面确认卡片；
-- AI 会话不足时，依次使用 MARKETS、NEWS、AI QUOTA 和未来天气 FORECAST 补位；
-- 最右一栏固定整合时间、天气、CPU、GPU、内存和进程数；
-- 支持 BGBL.AX、NDQ.AX、IBIT.AX、IVV.AX、USDT/AUD、BTC、ETH 和 WLFI 行情；
-- 使用 TextRadar 新闻和 Open-Meteo 天气；
-- 支持 Trofeo Vision 11.3 的 1920×400 LY USB 协议；
-- 支持托盘运行、登录自启、单实例保护、USB 热插拔、本机预览和 180° 旋转；
-- 发布包自带程序运行环境和 USB 依赖，不要求用户另外安装 .NET。
+- Prioritizes recent Codex, Cursor, and Claude Code sessions in the first four columns, with both workspace and real chat titles;
+- Uses three agent states—`Agent Working`, `Task Completed`, and `Waiting for You`—with an animated working border and persistent completion acknowledgement cards;
+- Fills unused columns with MARKETS, NEWS, AI QUOTA, and a future-weather FORECAST panel;
+- Keeps time, weather, CPU, GPU, memory, and process data in the fixed last column;
+- Tracks BGBL.AX, NDQ.AX, IBIT.AX, IVV.AX, USDT/AUD, BTC, ETH, and WLFI;
+- Uses TextRadar for news and Open-Meteo for weather;
+- Supports the Trofeo Vision 11.3 1920×400 LY USB protocol;
+- Includes tray operation, launch at login, single-instance protection, USB reconnection,
+  preview, and 180° rotation;
+- Ships with its runtime and USB dependency, so users do not need a separate .NET installation.
 
-## 屏幕布局
+## Dashboard layout
 
-屏幕由四个动态栏和一个固定栏组成。动态栏优先保留最近活跃的 AI 会话，不足时按顺序补入信息面板：
+The display has four dynamic columns and one fixed column. Active AI sessions take priority; the remaining dynamic columns are filled as follows:
 
-| 活跃 AI 会话 | 左一至左四 | 最右固定栏 |
+| Active AI sessions | Columns 1–4 | Fixed last column |
 |---:|---|---|
-| 4 个或更多 | Agent × 4 | 时间、当前天气、CPU、GPU、Memory、Processes |
-| 3 个 | Agent × 3、Markets | 同左 |
-| 2 个 | Agent × 2、Markets、News | 同左 |
-| 1 个 | Agent、Markets、News、AI Quota | 同左 |
-| 0 个 | Markets、News、AI Quota、Forecast | 同左 |
+| 4 or more | Agent × 4 | Time, current weather, CPU, GPU, Memory, Processes |
+| 3 | Agent × 3, Markets | Same |
+| 2 | Agent × 2, Markets, News | Same |
+| 1 | Agent, Markets, News, AI Quota | Same |
+| 0 | Markets, News, AI Quota, Forecast | Same |
 
-`Forecast` 只显示未来数小时的预报，最右固定栏显示当前天气，因此两者不会重复。Agent 面板显示工作区/仓库名称、真实聊天标题、状态、Token/计划进度；不在小屏幕上展示对话正文。
+`Forecast` contains only upcoming conditions, while the fixed column shows current weather, so the two panels do not duplicate one another. Agent panels show the workspace/repository, real chat title, state, and available token/plan progress without displaying conversation text.
 
-Agent 状态按以下方式转换：`Agent Working` → `Task Completed` → 确认提醒后 `Waiting for You`。如果未确认提醒便直接继续同一会话，旧提醒会自动清除并立即回到 `Agent Working`。会话最后活动超过 10 分钟后退出动态栏；没有继续对话时，未确认的完成提醒会一直保留。
+The state lifecycle is `Agent Working` → `Task Completed` → `Waiting for You` after acknowledgement. If the same session resumes before acknowledgement, the stale completion alert is cleared automatically and the panel immediately returns to `Agent Working`. A session leaves the dynamic area 10 minutes after its last activity; an unacknowledged completion remains visible only while that session has not resumed.
 
-## 运行要求
+## Requirements
 
-- Windows 10 1809 或更新版本，推荐 Windows 11；
-- 利民 Trofeo Vision 11.3 LCD，USB ID `0416:5408`；
-- LCD 使用 WinUSB 或 libusbK 驱动；
-- 使用本程序前退出官方 TRCC，同一时间只能有一个程序占用设备。
+- Windows 10 version 1809 or newer; Windows 11 is recommended;
+- Thermalright Trofeo Vision 11.3 LCD with USB ID `0416:5408`;
+- WinUSB or libusbK driver for the LCD;
+- Exit the official TRCC application before using this program because only one process
+  can access the USB device at a time.
 
-## 下载和使用
+## Download and run
 
-从 GitHub Releases 下载与你电脑架构匹配的 ZIP。绝大多数电脑应选择 `win-x64`。
-解压完整文件夹后，双击：
+Download the ZIP matching your architecture from GitHub Releases. Most PCs use `win-x64`.
+Extract the complete folder and run:
 
 ```text
 NJC AI Monitor.exe
 ```
 
-程序会驻留系统托盘。双击托盘图标打开预览，右键托盘图标可以打开设置、USB 诊断或退出程序。
-首次运行若被 Windows SmartScreen 拦截，请在确认下载来源后选择“更多信息”→“仍要运行”。当前社区发布包未进行代码签名。
+The application stays in the system tray. Double-click its tray icon to open the preview,
+or right-click it for settings, USB diagnostics, and exit controls.
+If Windows SmartScreen blocks the first launch, verify the download source and choose
+**More info → Run anyway**. Community release binaries are currently unsigned.
 
-## 从源码构建
+## Build from source
 
-需要安装 [.NET 8 SDK](https://dotnet.microsoft.com/download/dotnet/8.0)。在仓库根目录运行：
+Install the [.NET 8 SDK](https://dotnet.microsoft.com/download/dotnet/8.0), then run from
+the repository root:
 
 ```powershell
 .\Windows\build.ps1
 ```
 
-生成可发布 ZIP：
+To create a distributable ZIP:
 
 ```powershell
 .\Windows\package.ps1 -Runtime win-x64
 ```
 
-输出位于 `Windows\dist`。完整的运行、数据来源、命令行和故障排查说明见
-[Windows 使用与构建文档](Windows/README.md)。
+Output is written to `Windows\dist`. See the [detailed Windows guide](Windows/README.md)
+for data sources, command-line modes, and troubleshooting.
 
-## 项目结构
+## Repository layout
 
 ```text
-.github/workflows/                  GitHub 自动构建和发布
+.github/workflows/                  GitHub builds and releases
 Windows/
-├─ NjcAI.Monitor.sln            Visual Studio / Rider 解决方案
-├─ build.ps1                        编译脚本
-├─ package.ps1                      发布 ZIP 打包脚本
-├─ README.md                        详细说明
-├─ THIRD_PARTY_NOTICES.md           第三方组件声明
+├─ NjcAI.Monitor.sln            Visual Studio / Rider solution
+├─ build.ps1                        Build script
+├─ package.ps1                      Release packaging script
+├─ README.md                        Detailed documentation
+├─ THIRD_PARTY_NOTICES.md           Third-party notices
 └─ src/NjcAI.Monitor/
-   ├─ Program.cs                    程序入口
-   ├─ AppController.cs              刷新、托盘和 USB 总控制器
-   ├─ Core/                         设置、模型和日志
-   ├─ Services/                     Agent、行情、新闻、天气和硬件采集
-   ├─ Rendering/                    1920×400 仪表盘渲染
-   ├─ UI/                           预览和设置窗口
-   ├─ Usb/                          LY 协议与 LCD 通信
-   ├─ Assets/                       应用图标
-   └─ Native/                       x64/ARM64 libusb
+   ├─ Program.cs                    Application entry point
+   ├─ AppController.cs              Refresh, tray, and USB orchestration
+   ├─ Core/                         Settings, models, and logging
+   ├─ Services/                     Agent, market, news, weather, and hardware collectors
+   ├─ Rendering/                    1920×400 dashboard renderer
+   ├─ UI/                           Preview and settings windows
+   ├─ Usb/                          LY protocol and LCD communication
+   ├─ Assets/                       Application icon
+   └─ Native/                       x64/ARM64 libusb binaries
 ```
 
-## 隐私
+## Privacy
 
-AI Agent 信息只从当前 Windows 用户目录中的本地会话日志读取。程序不会上传对话内容，
-也不会读取 Codex 登录令牌。行情、新闻和天气功能只会向对应的公开数据服务发送标的代码或天气坐标。
+Agent information is read only from local session logs under the current Windows user.
+The application does not upload conversations or read Codex login tokens. Market, news,
+and weather panels send only symbols or weather coordinates to their public data services.
 
-## 第三方组件
+## Third-party components
 
-第三方库及其许可证见 [THIRD_PARTY_NOTICES.md](Windows/THIRD_PARTY_NOTICES.md)。
+See [THIRD_PARTY_NOTICES.md](Windows/THIRD_PARTY_NOTICES.md) for library licenses and notices.
 
-## 来源与致谢
+## Origin and acknowledgements
 
-NJC AI Monitor 是以 [beret21/MacTR](https://github.com/beret21/MacTR) 为主要上游完成的
-独立 Windows/C# 重写。早期 AI Agent 监控概念参考过 `m1ng-li/mac-thermalright-ai-monitor`
-社区分支；它不再作为本项目的发布仓库或产品身份。完整说明见 [NOTICE.md](NOTICE.md)。
+NJC AI Monitor is an independent Windows/C# rewrite based primarily on
+[beret21/MacTR](https://github.com/beret21/MacTR). Early AI-agent monitoring concepts were
+inspired by the `m1ng-li/mac-thermalright-ai-monitor` community fork, which is no longer used as
+this project's release remote or product identity. See [NOTICE.md](NOTICE.md) for details.
 
-## 参与开发与许可证
+## Contributing and license
 
-架构说明见 [ARCHITECTURE.md](docs/ARCHITECTURE.md)，提交代码前请阅读
-[CONTRIBUTING.md](CONTRIBUTING.md)。本项目采用 [MIT License](LICENSE)。
+See [ARCHITECTURE.md](docs/ARCHITECTURE.md) for the code map and
+[CONTRIBUTING.md](CONTRIBUTING.md) before submitting changes. The project is available under the
+[MIT License](LICENSE).
