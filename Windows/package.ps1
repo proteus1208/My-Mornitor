@@ -13,7 +13,21 @@ try {
     if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
     $source = Join-Path $staging '*'
-    Compress-Archive -Path $source -DestinationPath $archive -CompressionLevel Optimal -Force
+    $maximumAttempts = 5
+    for ($attempt = 1; $attempt -le $maximumAttempts; $attempt++) {
+        try {
+            Compress-Archive -Path $source -DestinationPath $archive -CompressionLevel Optimal -Force
+            break
+        }
+        catch {
+            if ($attempt -eq $maximumAttempts) {
+                throw
+            }
+            $delayMilliseconds = 500 * $attempt
+            Write-Warning "Packaging attempt $attempt failed because a file is still in use. Retrying in $delayMilliseconds ms."
+            Start-Sleep -Milliseconds $delayMilliseconds
+        }
+    }
     Write-Host "Package ready: $archive"
 }
 finally {
