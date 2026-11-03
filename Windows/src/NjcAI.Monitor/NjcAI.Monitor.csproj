@@ -1,0 +1,37 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0-windows10.0.19041.0</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <UseWindowsForms>true</UseWindowsForms>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <ApplicationIcon>Assets\NjcAI.ico</ApplicationIcon>
+    <AssemblyName>NJC AI Monitor</AssemblyName>
+    <RepositoryUrl>https://github.com/Nanjiang-Chen/njc-ai-monitor</RepositoryUrl>
+    <RootNamespace>NjcAI.Monitor</RootNamespace>
+    <Version>0.5.0</Version>
+    <Authors>NJC AI Monitor contributors</Authors>
+    <Description>NJC AI Monitor for the Thermalright Trofeo Vision 11.3 LCD on Windows</Description>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <RuntimeIdentifiers>win-x64;win-arm64</RuntimeIdentifiers>
+    <SatelliteResourceLanguages>zh-CN;en</SatelliteResourceLanguages>
+    <ApplicationHighDpiMode>PerMonitorV2</ApplicationHighDpiMode>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="LibUsbDotNet" Version="3.0.224" />
+    <PackageReference Include="LibreHardwareMonitorLib" Version="0.9.6" />
+  </ItemGroup>
+
+  <ItemGroup Condition="'$(RuntimeIdentifier)' != ''">
+    <Content Include="Native\$(RuntimeIdentifier)\libusb-1.0.dll"
+             Link="libusb-1.0.dll"
+             CopyToOutputDirectory="PreserveNewest"
+             CopyToPublishDirectory="PreserveNewest"
+             ExcludeFromSingleFile="true" />
+  </ItemGroup>
+
+</Project>

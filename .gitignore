@@ -1,0 +1,18 @@
+# Local .NET toolchain and build output
+.tools/
+**/bin/
+**/obj/
+Windows/artifacts/
+Windows/dist/
+.vs/
+.vscode/
+.idea/
+*.suo
+*.user
+TestResults/
+
+# Local/private and OS-generated files
+*.log
+*.crash.log
+.DS_Store
+Thumbs.db

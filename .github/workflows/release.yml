@@ -1,0 +1,70 @@
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        runtime: [win-x64, win-arm64]
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+      - name: Package Windows application
+        shell: powershell
+        run: .\Windows\package.ps1 -Runtime ${{ matrix.runtime }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: NJC-AI-Monitor-Windows-${{ matrix.runtime }}
+          path: Windows/dist/NJC-AI-Monitor-Windows-${{ matrix.runtime }}.zip
+
+  release:
+    needs: windows
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Download Windows packages
+        uses: actions/download-artifact@v4
+        with:
+          pattern: NJC-AI-Monitor-Windows-*
+          path: release-files
+          merge-multiple: true
+
+      - name: Generate checksums and release notes
+        shell: bash
+        run: |
+          sha256sum release-files/*.zip > release-files/SHA256SUMS.txt
+          cat > release-notes.md <<'EOF'
+          ## 安装
+
+          下载与你电脑架构匹配的 ZIP，绝大多数 Windows 电脑选择 `win-x64`。
+          解压完整文件夹后运行 `NJC AI Monitor.exe`。
+
+          ## 要求
+
+          - Windows 10 1809 或更新版本，推荐 Windows 11
+          - 利民 Trofeo Vision 11.3 LCD（1920×400）
+          - 使用 LCD 前请退出官方 TRCC
+          EOF
+
+      - name: Create GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          gh release create "$GITHUB_REF_NAME" \
+            release-files/*.zip \
+            release-files/SHA256SUMS.txt \
+            --title "$GITHUB_REF_NAME" \
+            --notes-file release-notes.md \
+            --generate-notes

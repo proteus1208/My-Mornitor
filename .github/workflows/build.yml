@@ -1,0 +1,28 @@
+name: Build
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        runtime: [win-x64, win-arm64]
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+      - name: Package and self-test
+        shell: powershell
+        run: .\Windows\package.ps1 -Runtime ${{ matrix.runtime }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: NJC-AI-Monitor-Windows-${{ matrix.runtime }}
+          path: Windows/dist/NJC-AI-Monitor-Windows-${{ matrix.runtime }}.zip
