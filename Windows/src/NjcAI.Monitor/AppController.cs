@@ -246,7 +246,7 @@ internal sealed class AppController : IDisposable
 
                 var connected = _usb.EnsureConnected();
                 var status = connected
-                    ? $"{_usb.Status} · {_usb.FramesSent:N0} 帧 · {_usb.LastFrameBytes / 1024:N0} KB"
+                    ? $"{_usb.Status} · {_usb.FramesSent:N0} frames · {_usb.LastFrameBytes / 1024:N0} KB"
                     : _usb.Status;
                 using var bitmap = _renderer.Render(snapshot, _settings, status);
                 var source = DashboardWindow.ToBitmapSource(bitmap);
@@ -311,14 +311,14 @@ internal sealed class AppController : IDisposable
     private Forms.ContextMenuStrip BuildTrayMenu()
     {
         var menu = new Forms.ContextMenuStrip();
-        menu.Items.Add("打开预览", null, (_, _) => Dispatch(ShowPreview));
-        menu.Items.Add("设置", null, (_, _) => Dispatch(ShowSettings));
-        menu.Items.Add("重新连接 LCD", null, (_, _) => Task.Run(_usb.Reconnect));
-        menu.Items.Add("清除完成提醒", null, (_, _) => Dispatch(ClearCompletionAlerts));
-        menu.Items.Add("USB 诊断", null, (_, _) => Dispatch(ShowUsbDiagnosis));
-        menu.Items.Add("导出当前画面…", null, (_, _) => Dispatch(ExportSnapshot));
+        menu.Items.Add("Open Preview", null, (_, _) => Dispatch(ShowPreview));
+        menu.Items.Add("Settings", null, (_, _) => Dispatch(ShowSettings));
+        menu.Items.Add("Reconnect LCD", null, (_, _) => Task.Run(_usb.Reconnect));
+        menu.Items.Add("Clear Completion Alerts", null, (_, _) => Dispatch(ClearCompletionAlerts));
+        menu.Items.Add("USB Diagnostics", null, (_, _) => Dispatch(ShowUsbDiagnosis));
+        menu.Items.Add("Export Current Frame…", null, (_, _) => Dispatch(ExportSnapshot));
         menu.Items.Add(new Forms.ToolStripSeparator());
-        menu.Items.Add("退出", null, (_, _) => Dispatch(Exit));
+        menu.Items.Add("Exit", null, (_, _) => Dispatch(Exit));
         return menu;
     }
 
@@ -360,8 +360,8 @@ internal sealed class AppController : IDisposable
     private void ShowUsbDiagnosis()
     {
         var diagnosis = _usb.Diagnose();
-        MessageBox.Show(diagnosis, "NJC AI Monitor — USB 诊断", MessageBoxButton.OK,
-            diagnosis.StartsWith("检测到", StringComparison.Ordinal)
+        MessageBox.Show(diagnosis, "NJC AI Monitor — USB Diagnostics", MessageBoxButton.OK,
+            diagnosis.StartsWith("Detected", StringComparison.Ordinal)
                 ? MessageBoxImage.Information
                 : MessageBoxImage.Warning);
     }
@@ -370,13 +370,13 @@ internal sealed class AppController : IDisposable
     {
         if (_latestFrame is null)
         {
-            MessageBox.Show("画面尚未生成。", "NJC AI Monitor", MessageBoxButton.OK, MessageBoxImage.Information);
+            MessageBox.Show("No frame has been generated yet.", "NJC AI Monitor", MessageBoxButton.OK, MessageBoxImage.Information);
             return;
         }
         var dialog = new SaveFileDialog
         {
-            Title = "导出 1920×400 画面",
-            Filter = "PNG 图片|*.png|JPEG 图片|*.jpg",
+            Title = "Export 1920×400 Frame",
+            Filter = "PNG Image|*.png|JPEG Image|*.jpg",
             FileName = $"NJC-AI-Monitor-{DateTime.Now:yyyyMMdd-HHmmss}.png",
             AddExtension = true,
         };

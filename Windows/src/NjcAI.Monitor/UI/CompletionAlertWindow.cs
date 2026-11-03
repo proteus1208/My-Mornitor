@@ -29,7 +29,7 @@ internal sealed class CompletionAlertWindow : Window
     public CompletionAlertWindow(ColorTheme theme = ColorTheme.BitcoinOrange)
     {
         _theme = ThemePalette.For(theme);
-        Title = "NJC AI Monitor — AI 任务完成";
+        Title = "NJC AI Monitor — AI Task Completed";
         Width = 430;
         SizeToContent = SizeToContent.Height;
         MaxHeight = 700;
@@ -66,7 +66,7 @@ internal sealed class CompletionAlertWindow : Window
         var heading = new StackPanel();
         _heading = new TextBlock
         {
-            Text = "AI 任务已经完成",
+            Text = "AI Task Completed",
             Foreground = Brush(_theme.AccentStrong),
             FontFamily = Font(),
             FontSize = 20,
@@ -84,7 +84,7 @@ internal sealed class CompletionAlertWindow : Window
         Grid.SetColumn(heading, 0);
         header.Children.Add(heading);
 
-        _acknowledgeAll = ActionButton("全部确认", false);
+        _acknowledgeAll = ActionButton("Confirm All", false);
         _acknowledgeAll.Margin = new Thickness(12, 0, 0, 0);
         _acknowledgeAll.Click += (_, _) => AcknowledgeAllRequested?.Invoke();
         Grid.SetColumn(_acknowledgeAll, 1);
@@ -151,12 +151,12 @@ internal sealed class CompletionAlertWindow : Window
         {
             _fingerprint = fingerprint;
             var kinds = ordered.Select(alert => alert.Kind).Distinct().ToArray();
-            var subject = kinds.Length == 1 ? AgentName(kinds[0]) : "多个 AI";
-            _heading.Text = $"{subject} 任务已经完成";
+            var subject = kinds.Length == 1 ? AgentName(kinds[0]) : "Multiple AI Agents";
+            _heading.Text = $"{subject} Task Completed";
             Title = $"NJC AI Monitor — {_heading.Text}";
             _subtitle.Text = ordered.Length == 1
-                ? "1 个任务等待确认"
-                : $"{ordered.Length} 个任务等待确认";
+                ? "1 task awaiting confirmation"
+                : $"{ordered.Length} tasks awaiting confirmation";
             _acknowledgeAll.Visibility = ordered.Length > 1
                 ? Visibility.Visible
                 : Visibility.Collapsed;
@@ -226,7 +226,7 @@ internal sealed class CompletionAlertWindow : Window
         });
         text.Children.Add(new TextBlock
         {
-            Text = $"完成于 {alert.CompletedAt:MM-dd HH:mm:ss}",
+            Text = $"Completed at {alert.CompletedAt:MM-dd HH:mm:ss}",
             Foreground = Brush(_theme.SecondaryText),
             FontFamily = Font(),
             FontSize = 11,
@@ -235,7 +235,7 @@ internal sealed class CompletionAlertWindow : Window
         Grid.SetColumn(text, 0);
         grid.Children.Add(text);
 
-        var acknowledge = ActionButton("确认", true);
+        var acknowledge = ActionButton("Confirm", true);
         acknowledge.Margin = new Thickness(12, 0, 0, 0);
         var identity = alert.Identity;
         acknowledge.Click += (_, _) => Acknowledged?.Invoke(identity);

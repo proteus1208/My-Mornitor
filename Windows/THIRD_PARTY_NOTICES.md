@@ -17,16 +17,16 @@ published application. Recipients retain all rights granted by the corresponding
 The LY USB framing logic is a clean C# port of the protocol implementation in this repository
 and is informed by the protocol documentation from `thermalright-trcc-linux`.
 
-Market quotes are requested at runtime from Yahoo Finance, ASX public market data, OKX public
-market data, Binance fallback data, and CoinGecko fallback data. These services and their data are
+Market quotes are requested at runtime from Yahoo Finance, OKX public market data, Binance fallback
+data, and CoinGecko fallback data. These services and their data are
 not bundled with the application and remain subject to their respective terms, availability, rate
 limits, and market-data delays. The quotes are for informational display only.
 
-News headlines are requested at runtime from TextRadar public pages. Weather observations and
-forecasts are requested at runtime from Open-Meteo and are attributed in the dashboard. Neither
-service nor its data is bundled with the application; use remains subject to the provider's terms,
-availability, and rate limits.
+News headlines are requested at runtime from the GDELT DOC API, the official Hacker News API, and
+the CoinDesk RSS feed. Weather observations and forecasts are requested at runtime from Open-Meteo
+and are attributed in the dashboard. None of these services or their data is bundled with the
+application; use remains subject to each provider's terms, availability, and rate limits.
 
-The Frogana application icon artwork was supplied by the repository owner. Confirm that you hold
+The application icon artwork was supplied by the repository owner. Confirm that you hold
 the required redistribution rights before publishing a fork or binary release; the software's MIT
 license does not grant rights to third-party artwork.

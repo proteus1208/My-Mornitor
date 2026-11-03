@@ -1,4 +1,4 @@
-FroganaIcon.png is the repository's source artwork for the Windows app icon.
+AppIconSource.png is the repository's source artwork for the Windows app icon.
 NjcAI.ico contains the Windows multi-resolution icon generated from that PNG.
 Run Windows/packaging/make-icon.ps1 after replacing the PNG source.
 

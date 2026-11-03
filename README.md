@@ -13,19 +13,51 @@ is available when the LCD is disconnected.
 
 The four dynamic columns show Markets, News, AI Quota, and Forecast. The fixed system/current-weather column remains visible.
 
-![Dashboard with no active agent](docs/assets/dashboard-no-agent.png)
+**Bitcoin Orange**\
+![No active agent in Bitcoin Orange](docs/assets/preview-no-agent-bitcoin-orange.png)\
+**Web3 Emerald**\
+![No active agent in Web3 Emerald](docs/assets/preview-no-agent-web3-emerald.png)\
+**Graphite Titanium**\
+![No active agent in Graphite Titanium](docs/assets/preview-no-agent-graphite-titanium.png)\
+**Cyber Neon**\
+![No active agent in Cyber Neon](docs/assets/preview-no-agent-cyber-neon.png)\
+**Solana Aurora**\
+![No active agent in Solana Aurora](docs/assets/preview-no-agent-solana-aurora.png)
 
 ### 2. One working agent
 
 The working session takes the first column; Markets, News, and AI Quota fill the remaining columns.
 
-![Dashboard with one working agent](docs/assets/dashboard-one-working.png)
+**Bitcoin Orange**\
+![One working agent in Bitcoin Orange](docs/assets/preview-one-working-bitcoin-orange.png)\
+**Web3 Emerald**\
+![One working agent in Web3 Emerald](docs/assets/preview-one-working-web3-emerald.png)\
+**Graphite Titanium**\
+![One working agent in Graphite Titanium](docs/assets/preview-one-working-graphite-titanium.png)\
+**Cyber Neon**\
+![One working agent in Cyber Neon](docs/assets/preview-one-working-cyber-neon.png)\
+**Solana Aurora**\
+![One working agent in Solana Aurora](docs/assets/preview-one-working-solana-aurora.png)
 
 ### 3. Two agents: working and just completed
 
 The first column shows `Agent Working`, while the second shows `Task Completed` with its persistent attention border. Markets and News occupy the other two columns.
 
-![Dashboard with one working and one completed agent](docs/assets/dashboard-two-agents.png)
+**Bitcoin Orange**\
+![One working and one completed agent in Bitcoin Orange](docs/assets/preview-two-agents-bitcoin-orange-bright.png)\
+**Web3 Emerald**\
+![One working and one completed agent in Web3 Emerald](docs/assets/preview-two-agents-web3-emerald-bright.png)\
+**Graphite Titanium**\
+![One working and one completed agent in Graphite Titanium](docs/assets/preview-two-agents-graphite-titanium-bright.png)\
+**Cyber Neon**\
+![One working and one completed agent in Cyber Neon](docs/assets/preview-two-agents-cyber-neon-bright.png)\
+**Solana Aurora**\
+![One working and one completed agent in Solana Aurora](docs/assets/preview-two-agents-solana-aurora-bright.png)
+
+Each state is shown in all five included themes. Switch at any time from
+**Settings → Color Theme**, then choose **Save Settings**. The selected palette applies to the LCD,
+local preview, animated agent states, market charts, quota graphics, and desktop completion alerts,
+and is restored on the next launch.
 
 ## Features
 
@@ -34,9 +66,9 @@ The first column shows `Agent Working`, while the second shows `Task Completed` 
 - Fills unused columns with MARKETS, NEWS, AI QUOTA, and a future-weather FORECAST panel;
 - Keeps time, weather, CPU, GPU, memory, and process data in the fixed last column;
 - Tracks BGBL.AX, NDQ.AX, IBIT.AX, IVV.AX, USDT/AUD, BTC, ETH, and WLFI;
-- Uses TextRadar for news and Open-Meteo for weather;
-- Includes five structure-preserving color themes: Bitcoin Orange, Web3 Emerald, Deep Ocean,
-  Royal Indigo, and Cyber Neon. The selected palette also applies to completion alerts;
+- Uses GDELT, Hacker News, and CoinDesk for English news, and Open-Meteo for weather;
+- Includes five structure-preserving color themes: Bitcoin Orange, Web3 Emerald, Graphite
+  Titanium, Cyber Neon, and Solana Aurora. The selected palette also applies to completion alerts;
 - Supports the Trofeo Vision 11.3 1920×400 LY USB protocol;
 - Includes tray operation, launch at login, single-instance protection, USB reconnection,
   preview, and 180° rotation;
