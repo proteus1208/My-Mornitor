@@ -65,6 +65,7 @@ jobs:
           gh release create "$GITHUB_REF_NAME" \
             release-files/*.zip \
             release-files/SHA256SUMS.txt \
+            --repo "$GITHUB_REPOSITORY" \
             --title "$GITHUB_REF_NAME" \
             --notes-file release-notes.md \
             --generate-notes
