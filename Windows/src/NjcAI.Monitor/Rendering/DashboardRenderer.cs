@@ -13,33 +13,35 @@ internal sealed class DashboardRenderer
     public const int Width = 1920;
     public const int Height = 400;
 
-    private static readonly Color Background = Color.FromArgb(3, 2, 1);
-    private static readonly Color Panel = Color.FromArgb(26, 13, 6);
-    private static readonly Color PanelBorder = Color.FromArgb(91, 48, 20);
-    private static readonly Color ModuleSeparator = Color.FromArgb(138, 70, 24);
-    private static readonly Color InnerSeparator = Color.FromArgb(107, 53, 18);
-    private static readonly Color NewsSeparator = Color.FromArgb(166, 82, 24);
-    private static readonly Color Track = Color.FromArgb(48, 34, 23);
-    private static readonly Color PrimaryText = Color.FromArgb(246, 241, 236);
-    private static readonly Color SecondaryText = Color.FromArgb(171, 145, 127);
-    private static readonly Color Web3Lime = Color.FromArgb(255, 212, 90);
-    private static readonly Color Web3Green = Color.FromArgb(247, 147, 26);
-    private static readonly Color Web3Teal = Color.FromArgb(255, 92, 53);
-    private static readonly Color Blue = Web3Teal;
-    private static readonly Color Cyan = Web3Teal;
-    private static readonly Color Green = Web3Green;
-    private static readonly Color Yellow = Web3Lime;
-    private static readonly Color Red = Color.FromArgb(255, 105, 116);
-    private static readonly Color MarketUp = Web3Teal;
-    private static readonly Color MarketUpHighlight = Web3Teal;
-    private static readonly Color MarketDown = Color.FromArgb(0, 255, 163);
-    private static readonly Color QuotaOrange = Color.FromArgb(217, 106, 0);
-    private static readonly Color Purple = Web3Lime;
-    private static readonly Color Orange = Web3Teal;
+    private static ThemePalette Palette => ThemePaletteContext.Current;
+    private static Color Background => Palette.Background;
+    private static Color Panel => Palette.Panel;
+    private static Color PanelBorder => Palette.PanelBorder;
+    private static Color ModuleSeparator => Palette.ModuleSeparator;
+    private static Color InnerSeparator => Palette.InnerSeparator;
+    private static Color NewsSeparator => Palette.NewsSeparator;
+    private static Color Track => Palette.Track;
+    private static Color PrimaryText => Palette.PrimaryText;
+    private static Color SecondaryText => Palette.SecondaryText;
+    private static Color Web3Lime => Palette.AccentHighlight;
+    private static Color Web3Green => Palette.AccentPrimary;
+    private static Color Web3Teal => Palette.AccentStrong;
+    private static Color Blue => Web3Teal;
+    private static Color Cyan => Web3Teal;
+    private static Color Green => Web3Green;
+    private static Color Yellow => Web3Lime;
+    private static Color Red => Palette.Error;
+    private static Color MarketUp => Web3Teal;
+    private static Color MarketUpHighlight => Web3Teal;
+    private static Color MarketDown => Palette.MarketDown;
+    private static Color QuotaOrange => Palette.Quota;
+    private static Color Purple => Web3Lime;
+    private static Color Orange => Web3Teal;
     private readonly DynamicPanelResolver _panelResolver = new();
 
     public Bitmap Render(DashboardSnapshot snapshot, AppSettings settings, string deviceStatus)
     {
+        using var themeScope = ThemePaletteContext.Use(settings.Theme);
         var bitmap = new Bitmap(Width, Height, PixelFormat.Format24bppRgb);
         bitmap.SetResolution(96, 96);
         using var graphics = Graphics.FromImage(bitmap);
@@ -63,7 +65,7 @@ internal sealed class DashboardRenderer
                                    IsCompletionActive(agent, renderTime);
             var flashOn = completionActive && IsCompletionFlashOn(renderTime);
             var accent = completionActive
-                ? flashOn ? Color.FromArgb(255, 226, 164) : Color.FromArgb(132, 69, 22)
+                ? flashOn ? Palette.CompletionBright : Palette.CompletionDim
                 : PanelAccent(dynamicPanels[index]);
             DrawPanel(graphics, panelRects[index], accent, completionActive, flashOn, index + 1);
             DrawDynamicPanel(graphics, dynamicPanels[index], panelRects[index], snapshot);
@@ -131,7 +133,7 @@ internal sealed class DashboardRenderer
     {
         using (var gradient = new LinearGradientBrush(
                    new Rectangle(0, 0, Width, Height),
-                   Color.FromArgb(3, 2, 1), Color.FromArgb(12, 5, 2), 8f))
+                   Background, Palette.BackgroundGradientEnd, 8f))
         {
             graphics.FillRectangle(gradient, 0, 0, Width, Height);
         }
@@ -184,7 +186,7 @@ internal sealed class DashboardRenderer
         shellPath.AddPolygon(shell);
         using (var shellFill = new LinearGradientBrush(
                    new Rectangle(8, 8, Width - 16, Height - 16),
-                   Color.FromArgb(26, 13, 6), Color.FromArgb(16, 7, 4), 90f))
+                   Panel, Palette.PanelGradientEnd, 90f))
         {
             graphics.FillPath(shellFill, shellPath);
         }

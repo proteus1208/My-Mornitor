@@ -57,12 +57,13 @@ internal sealed class AppController : IDisposable
         _forcePreview = arguments.Contains("--preview", StringComparer.OrdinalIgnoreCase);
         _dashboard = new DashboardWindow();
         _settingsWindow = new SettingsWindow(_settings);
-        _completionAlertWindow = new CompletionAlertWindow();
+        _completionAlertWindow = new CompletionAlertWindow(_settings.Theme);
         _dashboard.UsbDeviceChanged += () => Task.Run(_usb.Reconnect);
         _settingsWindow.Saved += settings =>
         {
             _settings = settings;
             _settingsWindow.Refresh(settings);
+            _completionAlertWindow.ApplyTheme(settings.Theme);
             RefreshCompletionAlertWindow();
             _ = Task.Run(() => RefreshInformationOnceAsync(_shutdown.Token));
         };

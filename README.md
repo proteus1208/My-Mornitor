@@ -35,6 +35,8 @@ The first column shows `Agent Working`, while the second shows `Task Completed` 
 - Keeps time, weather, CPU, GPU, memory, and process data in the fixed last column;
 - Tracks BGBL.AX, NDQ.AX, IBIT.AX, IVV.AX, USDT/AUD, BTC, ETH, and WLFI;
 - Uses TextRadar for news and Open-Meteo for weather;
+- Includes four structure-preserving color themes: Bitcoin Orange, Web3 Emerald, Cyber Blue,
+  and Ultraviolet. The selected palette also applies to completion alerts;
 - Supports the Trofeo Vision 11.3 1920×400 LY USB protocol;
 - Includes tray operation, launch at login, single-instance protection, USB reconnection,
   preview, and 180° rotation;
@@ -75,6 +77,8 @@ NJC AI Monitor.exe
 
 The application stays in the system tray. Double-click its tray icon to open the preview,
 or right-click it for settings, USB diagnostics, and exit controls.
+Choose a color theme in **Settings → Color theme**; the saved theme is applied to the next
+LCD and preview frame and remains selected after restart.
 If Windows SmartScreen blocks the first launch, verify the download source and choose
 **More info → Run anyway**. Community release binaries are currently unsigned.
 
