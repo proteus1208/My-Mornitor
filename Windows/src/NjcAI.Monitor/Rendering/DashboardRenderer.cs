@@ -31,9 +31,9 @@ internal sealed class DashboardRenderer
     private static Color Green => Web3Green;
     private static Color Yellow => Web3Lime;
     private static Color Red => Palette.Error;
-    private static Color MarketUp => Color.FromArgb(247, 147, 26);
-    private static Color MarketUpHighlight => Color.FromArgb(247, 147, 26);
-    private static Color MarketDown => Color.FromArgb(0, 229, 153);
+    private static Color MarketUp => Palette.MarketUp;
+    private static Color MarketUpHighlight => Palette.MarketUp;
+    private static Color MarketDown => Palette.MarketDown;
     private static Color QuotaOrange => Palette.Quota;
     private static Color Purple => Web3Lime;
     private static Color Orange => Web3Teal;
@@ -201,15 +201,15 @@ internal sealed class DashboardRenderer
             graphics.DrawPath(outline, shellPath);
         }
 
-        using (var topGradient = new LinearGradientBrush(
-                   new Rectangle(32, 8, Width - 312, 3), Web3Lime, Palette.AccentSecondary, 0f))
+        using (var topGradient = CreateAccentGradientBrush(
+                   new Rectangle(32, 8, Width - 312, 3)))
         using (var topPen = new Pen(topGradient, 3))
         {
             graphics.DrawLine(topPen, 32, 9, Width - 280, 9);
         }
         const int lineY = 51;
-        using var chainGradient = new LinearGradientBrush(
-            new Rectangle(70, lineY, Width - 140, 2), Web3Lime, Palette.AccentSecondary, 0f);
+        using var chainGradient = CreateAccentGradientBrush(
+            new Rectangle(70, lineY, Width - 140, 2));
         using (var chainPen = new Pen(chainGradient, 2))
         {
             graphics.DrawLine(chainPen, 70, lineY, Width - 70, lineY);
@@ -277,7 +277,7 @@ internal sealed class DashboardRenderer
         DrawColumnHeader(graphics, rect, agentName, string.Empty, statusColor);
 
         var hasStep = agent.StepCurrent is { } && agent.StepTotal is > 0;
-        var project = agent.Project ?? (agent.Available ? "尚无会话" : $"未安装 {agentName}");
+        var project = agent.Project ?? (agent.Available ? "No sessions yet" : $"{agentName} not installed");
         var hasWorkspace = !string.IsNullOrWhiteSpace(agent.Workspace) &&
                            !string.Equals(agent.Workspace, project, StringComparison.OrdinalIgnoreCase);
         var titleTop = hasWorkspace ? rect.Top + 79 : rect.Top + 65;
@@ -510,8 +510,8 @@ internal sealed class DashboardRenderer
             .Where(source => !string.IsNullOrWhiteSpace(source))
             .Distinct(StringComparer.OrdinalIgnoreCase));
         var footer = markets.Error ?? (latest is null
-            ? "正在连接免费行情…"
-            : $"1h · {(sources.Length > 0 ? sources + " · " : string.Empty)}更新于 {latest.UpdatedAt:HH:mm:ss}");
+            ? "Connecting to free market data…"
+            : $"1h · {(sources.Length > 0 ? sources + " · " : string.Empty)}Updated {latest.UpdatedAt:HH:mm:ss}");
         DrawCenteredText(graphics, Ellipsize(footer, 50), rect.Left + rect.Width / 2,
             rect.Top + 309, 9, markets.Error is null ? SecondaryText : Yellow);
     }
@@ -534,7 +534,7 @@ internal sealed class DashboardRenderer
             news.Articles.Count > 0 ? Green : Yellow);
         if (news.Articles.Count == 0)
         {
-            DrawCenteredText(graphics, "正在连接 TextRadar…", rect.Left + rect.Width / 2,
+            DrawCenteredText(graphics, "Connecting to English news…", rect.Left + rect.Width / 2,
                 rect.Top + 155, 15, SecondaryText);
             DrawCenteredText(graphics, news.Error ?? string.Empty, rect.Left + rect.Width / 2,
                 rect.Top + 306, 10, Yellow);
@@ -551,7 +551,9 @@ internal sealed class DashboardRenderer
             var y = rect.Top + 64 + index * 58;
             DrawText(graphics, Ellipsize(article.Category, 13), rect.Left + 20, y,
                 10, Web3Green, FontStyle.Bold);
-            var sourceText = article.SourceCount > 0 ? $"{article.SourceCount}源 · " : string.Empty;
+            var sourceText = string.IsNullOrWhiteSpace(article.Source)
+                ? string.Empty
+                : $"{article.Source} · ";
             DrawRightText(graphics, $"{sourceText}{FormatAge(article.PublishedAt)}",
                 rect.Right - 22, y, 10, SecondaryText, FontStyle.Bold);
             const float newsTitleSize = 13;
@@ -565,7 +567,7 @@ internal sealed class DashboardRenderer
         }
 
         var footer = news.Error ??
-                     $"第 {page + 1}/{pageCount} 页 · 更新于 {news.UpdatedAt:HH:mm}";
+                     $"Page {page + 1}/{pageCount} · Updated {news.UpdatedAt:HH:mm}";
         DrawCenteredText(graphics, footer, rect.Left + rect.Width / 2,
             rect.Top + 309, 9, news.Error is null ? SecondaryText : Yellow);
     }
@@ -679,7 +681,7 @@ internal sealed class DashboardRenderer
             DrawSparkline(graphics, quote.History,
                 new Rectangle(sparkLeft, y + 1, sparkWidth, 18), changeColor);
             DrawRightText(graphics, $"{quote.ChangePercent:+0.00;-0.00;0.00}%", right, y + 1,
-                13, changeColor, FontStyle.Bold);
+                13, changeColor, FontStyle.Bold, useNeonGradient: false);
         }
     }
 
@@ -713,9 +715,18 @@ internal sealed class DashboardRenderer
         }
 
         var isMarketUp = color.ToArgb() == MarketUp.ToArgb();
-        if (isMarketUp)
+        var isMarketDown = color.ToArgb() == MarketDown.ToArgb();
+        var useUpGradient = isMarketUp && Palette.GradientMarketUp;
+        var useDownGradient = isMarketDown && Palette.GradientMarketDown;
+        var useMarketGradient = useUpGradient || useDownGradient;
+        if (isMarketUp || useDownGradient)
         {
-            using var glowPen = new Pen(Color.FromArgb(62, MarketUp), 4.2f)
+            using Brush glowBrush = useMarketGradient
+                ? useUpGradient
+                    ? CreateAccentGradientBrush(rect, alpha: 62)
+                    : CreateMarketDownGradientBrush(rect, alpha: 58)
+                : new SolidBrush(Color.FromArgb(62, MarketUp));
+            using var glowPen = new Pen(glowBrush, 4.2f)
             {
                 StartCap = LineCap.Round,
                 EndCap = LineCap.Round,
@@ -724,7 +735,12 @@ internal sealed class DashboardRenderer
             graphics.DrawLines(glowPen, points);
         }
 
-        using var pen = new Pen(color, isMarketUp ? 2.1f : 1.6f)
+        using Brush lineBrush = useMarketGradient
+            ? useUpGradient
+                ? CreateAccentGradientBrush(rect)
+                : CreateMarketDownGradientBrush(rect)
+            : new SolidBrush(color);
+        using var pen = new Pen(lineBrush, isMarketUp || useDownGradient ? 2.1f : 1.6f)
         {
             StartCap = LineCap.Round,
             EndCap = LineCap.Round,
@@ -732,7 +748,9 @@ internal sealed class DashboardRenderer
         };
         graphics.DrawLines(pen, points);
         var endpoint = points[^1];
-        var endpointColor = isMarketUp ? MarketUpHighlight : color;
+        var endpointColor = useUpGradient
+            ? Palette.AccentSecondary
+            : isMarketUp ? MarketUpHighlight : color;
         using var endpointGlow = new SolidBrush(Color.FromArgb(72, endpointColor));
         using var endpointRing = new Pen(Color.FromArgb(235, endpointColor), 1.4f);
         using var endpointCore = new SolidBrush(endpointColor);
@@ -880,6 +898,26 @@ internal sealed class DashboardRenderer
         DrawText(graphics, "Processes", rect.Left + 22, y - 2, 12, PrimaryText, FontStyle.Bold);
         DrawRightText(graphics, $"{processCount} Running", rect.Right - 22,
             y - 2, 13, PrimaryText, FontStyle.Bold);
+        if (Palette.UsesDualAccent)
+        {
+            DrawNeonNodeLine(graphics, rect.Left + 22, rect.Right - 22, y + 24);
+        }
+    }
+
+    private static void DrawNeonNodeLine(Graphics graphics, int left, int right, int y)
+    {
+        using (var gradient = CreateAccentGradientBrush(
+                   new Rectangle(left, y, Math.Max(1, right - left), 2)))
+        {
+            graphics.FillRectangle(gradient, left, y, right - left, 2);
+        }
+        for (var index = 0; index < 4; index++)
+        {
+            var position = index / 3d;
+            var x = left + (int)Math.Round((right - left) * position);
+            using var node = new SolidBrush(BlendAccent(position));
+            graphics.FillEllipse(node, x - 3, y - 2, 6, 6);
+        }
     }
 
     private static void DrawTechSeparator(Graphics graphics, int left, int right, int y, Color accent)
@@ -961,7 +999,61 @@ internal sealed class DashboardRenderer
             EndCap = LineCap.Round,
         };
         graphics.DrawArc(trackPen, bounds, 135, 270);
-        graphics.DrawArc(valuePen, bounds, 135, (float)(270 * Math.Clamp(percentage / 100, 0, 1)));
+        var sweep = (float)(270 * Math.Clamp(percentage / 100, 0, 1));
+        if (Palette.UsesDualAccent && color.ToArgb() == QuotaOrange.ToArgb())
+        {
+            DrawNeonGaugeArc(graphics, bounds, center, radius, 135, sweep);
+        }
+        else
+        {
+            graphics.DrawArc(valuePen, bounds, 135, sweep);
+        }
+    }
+
+    private static void DrawNeonGaugeArc(
+        Graphics graphics,
+        Rectangle bounds,
+        Point center,
+        int radius,
+        float startAngle,
+        float sweepAngle)
+    {
+        if (sweepAngle <= 0)
+        {
+            return;
+        }
+
+        var steps = Math.Max(1, (int)Math.Ceiling(sweepAngle / 3));
+        var stepSweep = sweepAngle / steps;
+        for (var index = 0; index < steps; index++)
+        {
+            var position = steps <= 1 ? 0.5 : index / (double)(steps - 1);
+            using var segmentPen = new Pen(BlendAccent(position), 14)
+            {
+                StartCap = LineCap.Flat,
+                EndCap = LineCap.Flat,
+            };
+            graphics.DrawArc(segmentPen, bounds,
+                startAngle + index * stepSweep,
+                stepSweep + 0.2f);
+        }
+
+        DrawGaugeEndpoint(graphics, center, radius, startAngle, Palette.AccentPrimary);
+        DrawGaugeEndpoint(graphics, center, radius, startAngle + sweepAngle, Palette.AccentSecondary);
+    }
+
+    private static void DrawGaugeEndpoint(
+        Graphics graphics,
+        Point center,
+        int radius,
+        float angle,
+        Color color)
+    {
+        var radians = angle * Math.PI / 180;
+        var x = center.X + radius * Math.Cos(radians);
+        var y = center.Y + radius * Math.Sin(radians);
+        using var brush = new SolidBrush(color);
+        graphics.FillEllipse(brush, (float)x - 7, (float)y - 7, 14, 14);
     }
 
     private static void DrawSegmentedProgress(Graphics graphics, Rectangle rect, int current, int total, Color color)
@@ -985,10 +1077,15 @@ internal sealed class DashboardRenderer
         var squareSize = Math.Max(4, rect.Height);
         var segmentCount = Math.Max(1, (rect.Width + gap) / (squareSize + gap));
         var clamped = Math.Clamp(fraction, 0, 1);
+        var activeSegments = (int)Math.Ceiling(clamped * segmentCount);
         using var trackBrush = new SolidBrush(Track);
-        using Brush meterBrush = fillColor is { } solidColor
+        using Brush fallbackBrush = fillColor is { } solidColor
             ? new SolidBrush(solidColor)
-            : new LinearGradientBrush(rect, Web3Lime, Web3Teal, 0f);
+            : new LinearGradientBrush(
+                rect,
+                Web3Lime,
+                Web3Teal,
+                0f);
         for (var index = 0; index < segmentCount; index++)
         {
             var left = rect.Left + index * (squareSize + gap);
@@ -999,10 +1096,111 @@ internal sealed class DashboardRenderer
             var filledWidth = (int)Math.Round(segment.Width * segmentFraction);
             if (filledWidth > 0)
             {
-                graphics.FillRectangle(meterBrush,
-                    new Rectangle(segment.Left, segment.Top, filledWidth, segment.Height));
+                var filled = new Rectangle(segment.Left, segment.Top, filledWidth, segment.Height);
+                if (fillColor is null && Palette.UsesDualAccent)
+                {
+                    var position = activeSegments <= 1
+                        ? 0.5
+                        : Math.Clamp(index / (double)(activeSegments - 1), 0, 1);
+                    using var neonBrush = new SolidBrush(BlendAccent(position));
+                    graphics.FillRectangle(neonBrush, filled);
+                }
+                else
+                {
+                    graphics.FillRectangle(fallbackBrush, filled);
+                }
             }
         }
+    }
+
+    private static Color Blend(Color first, Color second, double secondWeight)
+    {
+        var weight = Math.Clamp(secondWeight, 0, 1);
+        return Color.FromArgb(
+            (int)Math.Round(first.R * (1 - weight) + second.R * weight),
+            (int)Math.Round(first.G * (1 - weight) + second.G * weight),
+            (int)Math.Round(first.B * (1 - weight) + second.B * weight));
+    }
+
+    private static Color BlendAccent(double position)
+    {
+        var normalized = Math.Clamp(position, 0, 1);
+        const double midpoint = 0.52;
+        return normalized <= midpoint
+            ? Blend(Palette.AccentPrimary, Palette.AccentStrong, normalized / midpoint)
+            : Blend(Palette.AccentStrong, Palette.AccentSecondary,
+                (normalized - midpoint) / (1 - midpoint));
+    }
+
+    private static LinearGradientBrush CreateAccentGradientBrush(
+        RectangleF rect,
+        float angle = 0f,
+        int alpha = 255)
+    {
+        var safeAlpha = Math.Clamp(alpha, 0, 255);
+        var safeRect = new RectangleF(
+            rect.X,
+            rect.Y,
+            Math.Max(1, rect.Width),
+            Math.Max(1, rect.Height));
+        if (!Palette.UsesDualAccent)
+        {
+            return new LinearGradientBrush(
+                safeRect,
+                Color.FromArgb(safeAlpha, Web3Lime),
+                Color.FromArgb(safeAlpha, Web3Teal),
+                angle);
+        }
+
+        var brush = new LinearGradientBrush(
+            safeRect,
+            Color.FromArgb(safeAlpha, Palette.AccentPrimary),
+            Color.FromArgb(safeAlpha, Palette.AccentSecondary),
+            angle)
+        {
+            InterpolationColors = new ColorBlend
+            {
+                Colors =
+                [
+                    Color.FromArgb(safeAlpha, Palette.AccentPrimary),
+                    Color.FromArgb(safeAlpha, Palette.AccentStrong),
+                    Color.FromArgb(safeAlpha, Palette.AccentSecondary),
+                ],
+                Positions = [0f, 0.52f, 1f],
+            },
+        };
+        return brush;
+    }
+
+    private static LinearGradientBrush CreateMarketDownGradientBrush(
+        RectangleF rect,
+        int alpha = 255)
+    {
+        var safeAlpha = Math.Clamp(alpha, 0, 255);
+        var safeRect = new RectangleF(
+            rect.X,
+            rect.Y,
+            Math.Max(1, rect.Width),
+            Math.Max(1, rect.Height));
+        var midpoint = Blend(Palette.AccentPrimary, Palette.MarketDown, 0.55);
+        var brush = new LinearGradientBrush(
+            safeRect,
+            Color.FromArgb(safeAlpha, Palette.AccentPrimary),
+            Color.FromArgb(safeAlpha, Palette.MarketDown),
+            0f)
+        {
+            InterpolationColors = new ColorBlend
+            {
+                Colors =
+                [
+                    Color.FromArgb(safeAlpha, Palette.AccentPrimary),
+                    Color.FromArgb(safeAlpha, midpoint),
+                    Color.FromArgb(safeAlpha, Palette.MarketDown),
+                ],
+                Positions = [0f, 0.52f, 1f],
+            },
+        };
+        return brush;
     }
 
     private static void DrawBar(Graphics graphics, Rectangle rect, double fraction, Color color, int radius)
@@ -1018,7 +1216,7 @@ internal sealed class DashboardRenderer
         var valueRect = new Rectangle(rect.Left, rect.Top, Math.Max(rect.Height, valueWidth), rect.Height);
         using var valuePath = RoundedRect(valueRect, radius);
         using Brush brush = IsWeb3Accent(color)
-            ? new LinearGradientBrush(valueRect, Web3Lime, Web3Teal, 0f)
+            ? CreateAccentGradientBrush(valueRect)
             : new SolidBrush(color);
         graphics.FillPath(brush, valuePath);
     }
@@ -1050,38 +1248,87 @@ internal sealed class DashboardRenderer
     }
 
     private static void DrawText(Graphics graphics, string text, float x, float y, float size,
-        Color color, FontStyle style = FontStyle.Regular)
+        Color color, FontStyle style = FontStyle.Regular, bool useNeonGradient = true)
     {
         using var font = CreateFont(size, style);
-        using var brush = new SolidBrush(color);
-        graphics.DrawString(text, font, brush, x, y, StringFormat.GenericTypographic);
+        DrawCrispText(graphics, text, font, color,
+            new PointF(x, y), StringFormat.GenericTypographic, useNeonGradient);
     }
 
     private static void DrawRightText(Graphics graphics, string text, float right, float y, float size,
-        Color color, FontStyle style = FontStyle.Regular)
+        Color color, FontStyle style = FontStyle.Regular, bool useNeonGradient = true)
     {
         using var font = CreateFont(size, style);
-        using var brush = new SolidBrush(color);
         using var format = new StringFormat(StringFormat.GenericTypographic) { Alignment = StringAlignment.Far };
-        graphics.DrawString(text, font, brush, new PointF(right, y), format);
+        DrawCrispText(graphics, text, font, color, new PointF(right, y), format, useNeonGradient);
     }
 
     private static void DrawCenteredText(Graphics graphics, string text, float centerX, float y, float size,
-        Color color, FontStyle style = FontStyle.Regular)
+        Color color, FontStyle style = FontStyle.Regular, bool useNeonGradient = true)
     {
         using var font = CreateFont(size, style);
-        using var brush = new SolidBrush(color);
         using var format = new StringFormat(StringFormat.GenericTypographic) { Alignment = StringAlignment.Center };
-        graphics.DrawString(text, font, brush, new PointF(centerX, y), format);
+        DrawCrispText(graphics, text, font, color, new PointF(centerX, y), format, useNeonGradient);
     }
 
     private static void DrawCenteredMonoText(Graphics graphics, string text, float centerX, float y, float size,
-        Color color, FontStyle style = FontStyle.Regular)
+        Color color, FontStyle style = FontStyle.Regular, bool useNeonGradient = true)
     {
         using var font = CreateMonoFont(size, style);
-        using var brush = new SolidBrush(color);
         using var format = new StringFormat(StringFormat.GenericTypographic) { Alignment = StringAlignment.Center };
-        graphics.DrawString(text, font, brush, new PointF(centerX, y), format);
+        DrawCrispText(graphics, text, font, color, new PointF(centerX, y), format, useNeonGradient);
+    }
+
+    private static void DrawCrispText(
+        Graphics graphics,
+        string text,
+        Font font,
+        Color color,
+        PointF origin,
+        StringFormat format,
+        bool useNeonGradient)
+    {
+        if (useNeonGradient && IsNeonGradientText(color))
+        {
+            var measured = graphics.MeasureString(text, font, new SizeF(Width, Height), format);
+            var left = format.Alignment switch
+            {
+                StringAlignment.Center => origin.X - measured.Width / 2,
+                StringAlignment.Far => origin.X - measured.Width,
+                _ => origin.X,
+            };
+            var bounds = new RectangleF(
+                left,
+                origin.Y,
+                Math.Max(1, measured.Width),
+                Math.Max(1, measured.Height));
+            using var gradient = CreateAccentGradientBrush(bounds);
+            graphics.DrawString(text, font, gradient, origin, format);
+            return;
+        }
+
+        using var brush = new SolidBrush(color);
+        graphics.DrawString(text, font, brush, origin, format);
+    }
+
+    private static bool IsNeonGradientText(Color color)
+    {
+        if (!Palette.UsesDualAccent)
+        {
+            return false;
+        }
+
+        var value = color.ToArgb();
+        return value == Palette.AccentHighlight.ToArgb() ||
+               value == Palette.AccentPrimary.ToArgb() ||
+               value == Palette.AccentStrong.ToArgb() ||
+               value == Palette.AccentSecondary.ToArgb() ||
+               value == Palette.MarketUp.ToArgb() ||
+               value == Palette.MarketDown.ToArgb() ||
+               value == Palette.Quota.ToArgb() ||
+               value == Palette.Error.ToArgb() ||
+               value == Palette.CompletionBright.ToArgb() ||
+               value == Palette.CompletionDim.ToArgb();
     }
 
     private static Font CreateFont(float size, FontStyle style)
@@ -1112,8 +1359,9 @@ internal sealed class DashboardRenderer
 
     private static string FormatTokens(ulong value) => value switch
     {
-        >= 100_000_000 => $"{value / 100_000_000d:0.##}亿",
-        >= 10_000 => $"{value / 10_000d:0.##}万",
+        >= 1_000_000_000 => $"{value / 1_000_000_000d:0.##}B",
+        >= 1_000_000 => $"{value / 1_000_000d:0.##}M",
+        >= 1_000 => $"{value / 1_000d:0.##}K",
         _ => value.ToString(CultureInfo.InvariantCulture),
     };
 
@@ -1122,14 +1370,14 @@ internal sealed class DashboardRenderer
         var age = DateTime.Now - value;
         if (age.TotalMinutes < 1)
         {
-            return "刚刚";
+            return "Just now";
         }
         if (age.TotalHours < 1)
         {
-            return $"{Math.Max(1, (int)age.TotalMinutes)}分钟前";
+            return $"{Math.Max(1, (int)age.TotalMinutes)}m ago";
         }
         return age.TotalHours < 24
-            ? $"{Math.Max(1, (int)age.TotalHours)}小时前"
+            ? $"{Math.Max(1, (int)age.TotalHours)}h ago"
             : value.ToString("MM-dd", CultureInfo.InvariantCulture);
     }
 

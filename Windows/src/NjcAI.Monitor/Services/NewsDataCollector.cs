@@ -1,16 +1,21 @@
+using System.Globalization;
 using System.Net;
 using System.Net.Http;
 using System.Text.Json;
 using System.Text.RegularExpressions;
+using System.Xml.Linq;
 using NjcAI.Monitor.Core;
 
 namespace NjcAI.Monitor.Services;
 
 internal sealed class NewsDataCollector : IDisposable
 {
-    private const string BaseUrl = "https://textradar.app/";
-    private const string DisplayApiUrl = "https://textradar.app/api/display.json?limit=20";
-    private static readonly string CachePath = Path.Combine(AppSettings.DataDirectory, "news-cache.json");
+    private const string GdeltUrl =
+        "https://api.gdeltproject.org/api/v2/doc/doc?query=(economy%20OR%20markets%20OR%20business%20OR%20geopolitics%20OR%20Australia)&mode=artlist&maxrecords=30&timespan=24h&sort=datedesc&format=jsonfeed";
+    private const string HackerNewsTopUrl = "https://hacker-news.firebaseio.com/v0/topstories.json";
+    private const string HackerNewsItemUrl = "https://hacker-news.firebaseio.com/v0/item/{0}.json";
+    private const string CoinDeskRssUrl = "https://www.coindesk.com/arc/outboundfeeds/rss/";
+    private static readonly string CachePath = Path.Combine(AppSettings.DataDirectory, "news-cache-en.json");
 
     private readonly HttpClient _http;
     private NewsSnapshot _current;
@@ -20,184 +25,256 @@ internal sealed class NewsDataCollector : IDisposable
     public NewsDataCollector(HttpMessageHandler? handler = null)
     {
         handler ??= new HttpClientHandler { AutomaticDecompression = DecompressionMethods.All };
-        _http = new HttpClient(handler) { Timeout = TimeSpan.FromSeconds(12) };
-        _http.DefaultRequestHeaders.UserAgent.ParseAdd("NJC-AI-Monitor/0.5");
+        _http = new HttpClient(handler) { Timeout = TimeSpan.FromSeconds(18) };
+        _http.DefaultRequestHeaders.UserAgent.ParseAdd("NJC-AI-Monitor/0.2");
         _http.DefaultRequestHeaders.Accept.ParseAdd("application/json");
-        _http.DefaultRequestHeaders.Accept.ParseAdd("text/html");
+        _http.DefaultRequestHeaders.Accept.ParseAdd("application/rss+xml");
+        _http.DefaultRequestHeaders.Accept.ParseAdd("application/xml");
         _current = LoadCache() ?? NewsSnapshot.Empty;
     }
 
     public async Task<NewsSnapshot> CollectAsync(CancellationToken cancellationToken)
     {
-        var errors = new List<string>();
-        IReadOnlyList<NewsArticle> articles = [];
-        try
+        var tasks = new[]
         {
-            var json = await _http.GetStringAsync(DisplayApiUrl, cancellationToken).ConfigureAwait(false);
-            articles = ParseJson(json, BaseUrl);
-        }
-        catch (Exception exception) when (exception is not OperationCanceledException)
-        {
-            errors.Add($"JSON: {exception.Message}");
-        }
-
-        if (articles.Count == 0)
-        {
-            try
-            {
-                var html = await _http.GetStringAsync(BaseUrl, cancellationToken).ConfigureAwait(false);
-                articles = ParseHtml(html, BaseUrl);
-            }
-            catch (Exception exception) when (exception is not OperationCanceledException)
-            {
-                errors.Add($"HTML: {exception.Message}");
-            }
-        }
+            FetchSourceAsync("GDELT", FetchGdeltAsync, cancellationToken),
+            FetchSourceAsync("Hacker News", FetchHackerNewsAsync, cancellationToken),
+            FetchSourceAsync("CoinDesk", FetchCoinDeskAsync, cancellationToken),
+        };
+        var batches = await Task.WhenAll(tasks).ConfigureAwait(false);
+        var articles = Balance(batches.Select(batch => batch.Articles));
+        var errors = batches
+            .Where(batch => !string.IsNullOrWhiteSpace(batch.Error))
+            .Select(batch => $"{batch.Name}: {batch.Error}")
+            .ToArray();
 
         NewsSnapshot snapshot;
         if (articles.Count > 0)
         {
             snapshot = new NewsSnapshot(articles, DateTime.Now, null);
             SaveCache(snapshot);
+            if (errors.Length > 0)
+            {
+                Log.Warn($"Some English news sources failed: {string.Join(" · ", errors)}");
+            }
         }
         else
         {
             var previous = Current;
-            var message = errors.Count == 0 ? "TextRadar 暂无新闻" : "TextRadar 暂不可用";
-            snapshot = new NewsSnapshot(previous.Articles, previous.UpdatedAt, message);
-            Log.Warn($"TextRadar update failed: {string.Join(" · ", errors)}");
+            snapshot = new NewsSnapshot(
+                previous.Articles,
+                previous.UpdatedAt,
+                "English news sources are unavailable");
+            Log.Warn($"English news update failed: {string.Join(" · ", errors)}");
         }
         Volatile.Write(ref _current, snapshot);
         return snapshot;
     }
 
-    internal static IReadOnlyList<NewsArticle> ParseJson(string json, string baseUrl = BaseUrl)
+    private async Task<SourceBatch> FetchSourceAsync(
+        string name,
+        Func<CancellationToken, Task<IReadOnlyList<NewsArticle>>> fetch,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            return new SourceBatch(name, await fetch(cancellationToken).ConfigureAwait(false), null);
+        }
+        catch (Exception exception) when (exception is not OperationCanceledException)
+        {
+            return new SourceBatch(name, [], exception.Message);
+        }
+    }
+
+    private async Task<IReadOnlyList<NewsArticle>> FetchGdeltAsync(CancellationToken cancellationToken)
+    {
+        var json = await _http.GetStringAsync(GdeltUrl, cancellationToken).ConfigureAwait(false);
+        return ParseGdeltJsonFeed(json);
+    }
+
+    private async Task<IReadOnlyList<NewsArticle>> FetchHackerNewsAsync(CancellationToken cancellationToken)
+    {
+        var json = await _http.GetStringAsync(HackerNewsTopUrl, cancellationToken).ConfigureAwait(false);
+        var ids = JsonSerializer.Deserialize<long[]>(json) ?? [];
+        var tasks = ids.Take(14).Select(id => FetchHackerNewsItemAsync(id, cancellationToken));
+        var articles = await Task.WhenAll(tasks).ConfigureAwait(false);
+        return articles
+            .Where(article => article is not null)
+            .Cast<NewsArticle>()
+            .OrderByDescending(article => article.Importance)
+            .ThenByDescending(article => article.PublishedAt)
+            .Take(8)
+            .ToArray();
+    }
+
+    private async Task<NewsArticle?> FetchHackerNewsItemAsync(long id, CancellationToken cancellationToken)
+    {
+        var url = string.Format(CultureInfo.InvariantCulture, HackerNewsItemUrl, id);
+        var json = await _http.GetStringAsync(url, cancellationToken).ConfigureAwait(false);
+        return ParseHackerNewsItem(json);
+    }
+
+    private async Task<IReadOnlyList<NewsArticle>> FetchCoinDeskAsync(CancellationToken cancellationToken)
+    {
+        var xml = await _http.GetStringAsync(CoinDeskRssUrl, cancellationToken).ConfigureAwait(false);
+        return ParseRss(xml, "CoinDesk", "Crypto");
+    }
+
+    internal static IReadOnlyList<NewsArticle> ParseGdeltJsonFeed(string json)
     {
         using var document = JsonDocument.Parse(json);
-        var root = document.RootElement;
-        JsonElement items;
-        if (root.ValueKind == JsonValueKind.Array)
-        {
-            items = root;
-        }
-        else if (!TryArray(root, out items, "items", "articles", "headlines", "news"))
+        if (!document.RootElement.TryGetProperty("items", out var items) ||
+            items.ValueKind != JsonValueKind.Array)
         {
             return [];
         }
 
         var results = new List<NewsArticle>();
+        var position = 0;
         foreach (var item in items.EnumerateArray())
         {
-            var title = ReadString(item, "title", "headline", "name");
-            if (string.IsNullOrWhiteSpace(title))
+            var title = CleanText(ReadString(item, "title") ?? string.Empty);
+            var url = ReadString(item, "url", "id");
+            if (string.IsNullOrWhiteSpace(title) || string.IsNullOrWhiteSpace(url) ||
+                !IsLikelyEnglish(title))
             {
                 continue;
             }
-            var category = ReadString(item, "category", "cat", "section") ?? "热点";
-            var importance = ReadInt(item, "importance", "stars", "rating", "score") ?? 3;
-            var sourceCount = ReadInt(item, "source_count", "sourceCount", "sources") ?? 1;
-            var published = ReadDate(item, "published_at", "publishedAt", "time", "date") ?? DateTime.Now;
-            var url = AbsoluteUrl(ReadString(item, "url", "link", "href") ?? BaseUrl, baseUrl);
+            var published = ReadDate(item, "date_published", "date_modified") ??
+                            DateTime.Now.AddMinutes(-position * 3);
             results.Add(new NewsArticle(
-                CleanText(title), CleanText(category), Math.Clamp(importance, 1, 5),
-                Math.Max(1, sourceCount), published, url));
+                title,
+                ClassifyGdelt(title),
+                4,
+                1,
+                published,
+                url,
+                "GDELT"));
+            position++;
         }
-        return Rank(results);
+        return Deduplicate(results).Take(10).ToArray();
     }
 
-    internal static IReadOnlyList<NewsArticle> ParseHtml(string html, string baseUrl = BaseUrl)
+    internal static NewsArticle? ParseHackerNewsItem(string json)
     {
-        var results = new List<NewsArticle>();
-        foreach (Match article in Regex.Matches(html, @"<article\s+class=""lede\b(?<body>.*?)</article>",
-                     RegexOptions.IgnoreCase | RegexOptions.Singleline))
+        using var document = JsonDocument.Parse(json);
+        var item = document.RootElement;
+        var type = ReadString(item, "type");
+        var title = CleanText(ReadString(item, "title") ?? string.Empty);
+        if (!string.Equals(type, "story", StringComparison.OrdinalIgnoreCase) ||
+            string.IsNullOrWhiteSpace(title))
         {
-            var body = article.Groups["body"].Value;
-            var title = Capture(body, @"<a\s+class=""lede-title""\s+href=""(?<url>[^""]+)""[^>]*>(?<value>.*?)</a>");
-            if (title.Value is null)
-            {
-                continue;
-            }
-            var category = CaptureValue(body, @"<span\s+class=""lede-cat[^""]*""[^>]*>(?<value>.*?)</span>") ?? "热点";
-            var stars = CaptureInt(body, @"data-stars=""(?<value>\d+)""") ?? 5;
-            var sources = CaptureInt(body, @"<span\s+class=""lede-srcct"">(?<value>\d+)源</span>") ?? 1;
-            var published = CaptureDate(body) ?? DateTime.Now;
-            results.Add(new NewsArticle(CleanText(title.Value), CleanText(category), stars, sources,
-                published, AbsoluteUrl(title.Url ?? BaseUrl, baseUrl)));
+            return null;
         }
-
-        foreach (Match item in Regex.Matches(html, @"<li\s+class=""cluster\b(?<body>.*?)</li>",
-                     RegexOptions.IgnoreCase | RegexOptions.Singleline))
+        var id = ReadLong(item, "id") ?? 0;
+        var score = ReadLong(item, "score") ?? 0;
+        var timestamp = ReadLong(item, "time") ?? DateTimeOffset.Now.ToUnixTimeSeconds();
+        var url = ReadString(item, "url") ?? $"https://news.ycombinator.com/item?id={id}";
+        var importance = score switch
         {
-            var body = item.Groups["body"].Value;
-            var title = Capture(body, @"<a\s+class=""cl-title""\s+href=""(?<url>[^""]+)""[^>]*>(?<value>.*?)</a>");
-            if (title.Value is null)
-            {
-                continue;
-            }
-            var category = CaptureValue(body, @"<span\s+class=""cl-cat""[^>]*>(?<value>.*?)</span>") ?? "热点";
-            var stars = CaptureInt(body, @"class=""cl-stars""\s+data-stars=""(?<value>\d+)""") ?? 3;
-            var sources = CaptureInt(body, @"(?<value>\d+)源") ?? 1;
-            var published = CaptureDate(body) ?? DateTime.Now;
-            results.Add(new NewsArticle(CleanText(title.Value), CleanText(category), stars, sources,
-                published, AbsoluteUrl(title.Url ?? BaseUrl, baseUrl)));
-        }
-        return Rank(results);
+            >= 300 => 5,
+            >= 100 => 4,
+            _ => 3,
+        };
+        return new NewsArticle(
+            title,
+            "AI / Tech",
+            importance,
+            1,
+            DateTimeOffset.FromUnixTimeSeconds(timestamp).LocalDateTime,
+            url,
+            "Hacker News");
     }
 
-    private static IReadOnlyList<NewsArticle> Rank(IEnumerable<NewsArticle> articles) => articles
-        .Where(article => !string.IsNullOrWhiteSpace(article.Title))
+    internal static IReadOnlyList<NewsArticle> ParseRss(
+        string xml,
+        string source,
+        string defaultCategory)
+    {
+        var document = XDocument.Parse(xml);
+        var results = document.Descendants("item")
+            .Select(item =>
+            {
+                var title = CleanText(item.Element("title")?.Value ?? string.Empty);
+                var url = item.Element("link")?.Value.Trim() ?? string.Empty;
+                var category = CleanText(item.Elements("category").FirstOrDefault()?.Value ?? defaultCategory);
+                var publishedText = item.Element("pubDate")?.Value;
+                var published = DateTimeOffset.TryParse(publishedText, out var parsed)
+                    ? parsed.LocalDateTime
+                    : DateTime.Now;
+                return new NewsArticle(title, category, 4, 1, published, url, source);
+            })
+            .Where(article => !string.IsNullOrWhiteSpace(article.Title) &&
+                              !string.IsNullOrWhiteSpace(article.Url) &&
+                              IsLikelyEnglish(article.Title));
+        return Deduplicate(results).Take(8).ToArray();
+    }
+
+    private static IReadOnlyList<NewsArticle> Balance(
+        IEnumerable<IReadOnlyList<NewsArticle>> sources)
+    {
+        var queues = sources
+            .Where(source => source.Count > 0)
+            .Select(source => source
+                .OrderByDescending(article => article.PublishedAt)
+                .Take(8)
+                .ToArray())
+            .ToArray();
+        var output = new List<NewsArticle>();
+        var seenUrls = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        for (var index = 0; output.Count < 20 && queues.Any(queue => index < queue.Length); index++)
+        {
+            foreach (var queue in queues)
+            {
+                if (index >= queue.Length || !seenUrls.Add(queue[index].Url))
+                {
+                    continue;
+                }
+                output.Add(queue[index]);
+                if (output.Count == 20)
+                {
+                    break;
+                }
+            }
+        }
+        return output;
+    }
+
+    private static IEnumerable<NewsArticle> Deduplicate(IEnumerable<NewsArticle> articles) => articles
         .GroupBy(article => article.Url, StringComparer.OrdinalIgnoreCase)
-        .Select(group => group.First())
-        .OrderByDescending(article => article.Importance)
-        .ThenByDescending(article => article.PublishedAt)
-        .Take(18)
-        .ToArray();
+        .Select(group => group.First());
 
-    private static (string? Value, string? Url) Capture(string html, string pattern)
+    private static string ClassifyGdelt(string title)
     {
-        var match = Regex.Match(html, pattern, RegexOptions.IgnoreCase | RegexOptions.Singleline);
-        return match.Success
-            ? (match.Groups["value"].Value, match.Groups["url"].Value)
-            : (null, null);
+        var value = title.ToLowerInvariant();
+        string[] marketTerms =
+        [
+            "market", "stock", "shares", "economy", "economic", "inflation",
+            "rates", "central bank", "earnings", "investor", "trade",
+        ];
+        return marketTerms.Any(value.Contains) ? "Markets" : "World";
     }
 
-    private static string? CaptureValue(string html, string pattern)
+    private static bool IsLikelyEnglish(string value)
     {
-        var match = Regex.Match(html, pattern, RegexOptions.IgnoreCase | RegexOptions.Singleline);
-        return match.Success ? match.Groups["value"].Value : null;
-    }
-
-    private static int? CaptureInt(string html, string pattern) =>
-        int.TryParse(CaptureValue(html, pattern), out var value) ? value : null;
-
-    private static DateTime? CaptureDate(string html)
-    {
-        var value = CaptureValue(html, @"<time\s+datetime=""(?<value>[^""]+)""");
-        return DateTimeOffset.TryParse(value, out var parsed) ? parsed.LocalDateTime : null;
+        if (value.Any(character => character is >= '\u3400' and <= '\u9fff'))
+        {
+            return false;
+        }
+        var letters = value.Count(char.IsLetter);
+        if (letters == 0)
+        {
+            return false;
+        }
+        var latin = value.Count(character =>
+            character is >= 'A' and <= 'Z' or >= 'a' and <= 'z');
+        return latin / (double)letters >= 0.82;
     }
 
     private static string CleanText(string value)
     {
         var withoutTags = Regex.Replace(value, "<[^>]+>", string.Empty);
         return Regex.Replace(WebUtility.HtmlDecode(withoutTags), @"\s+", " ").Trim();
-    }
-
-    private static string AbsoluteUrl(string value, string baseUrl) =>
-        Uri.TryCreate(value, UriKind.Absolute, out var absolute)
-            ? absolute.ToString()
-            : new Uri(new Uri(baseUrl), value).ToString();
-
-    private static bool TryArray(JsonElement root, out JsonElement array, params string[] names)
-    {
-        foreach (var name in names)
-        {
-            if (root.TryGetProperty(name, out array) && array.ValueKind == JsonValueKind.Array)
-            {
-                return true;
-            }
-        }
-        array = default;
-        return false;
     }
 
     private static string? ReadString(JsonElement item, params string[] names)
@@ -212,23 +289,12 @@ internal sealed class NewsDataCollector : IDisposable
         return null;
     }
 
-    private static int? ReadInt(JsonElement item, params string[] names)
+    private static long? ReadLong(JsonElement item, params string[] names)
     {
         foreach (var name in names)
         {
-            if (!item.TryGetProperty(name, out var value))
-            {
-                continue;
-            }
-            if (value.ValueKind == JsonValueKind.Number && value.TryGetInt32(out var number))
-            {
-                return number;
-            }
-            if (value.ValueKind == JsonValueKind.Array)
-            {
-                return value.GetArrayLength();
-            }
-            if (value.ValueKind == JsonValueKind.String && int.TryParse(value.GetString(), out number))
+            if (item.TryGetProperty(name, out var value) && value.ValueKind == JsonValueKind.Number &&
+                value.TryGetInt64(out var number))
             {
                 return number;
             }
@@ -265,9 +331,14 @@ internal sealed class NewsDataCollector : IDisposable
         }
         catch (Exception exception)
         {
-            Log.Warn($"Unable to save news cache: {exception.Message}");
+            Log.Warn($"Unable to save English news cache: {exception.Message}");
         }
     }
 
     public void Dispose() => _http.Dispose();
+
+    private sealed record SourceBatch(
+        string Name,
+        IReadOnlyList<NewsArticle> Articles,
+        string? Error);
 }

@@ -290,7 +290,7 @@ internal sealed class AgentUsageCollector
         _codexProgress.TryGetValue(file.FullName, out var usage);
         return new AgentSnapshot(
             AgentKind.Codex, true, usage?.Input ?? 0, usage?.Output ?? 0, lastActive,
-            project ?? "Codex 会话", activity, working, attention, null, model,
+            project ?? "Codex Session", activity, working, attention, null, model,
             step?.Current, step?.Total, step?.Text, quota, reset, true,
             metadata.Id ?? Path.GetFileNameWithoutExtension(file.Name), quotaWindowMinutes,
             Workspace: workspace);

@@ -45,16 +45,16 @@ jobs:
         run: |
           sha256sum release-files/*.zip > release-files/SHA256SUMS.txt
           cat > release-notes.md <<'EOF'
-          ## 安装
+          ## Install
 
-          下载与你电脑架构匹配的 ZIP，绝大多数 Windows 电脑选择 `win-x64`。
-          解压完整文件夹后运行 `NJC AI Monitor.exe`。
+          Download the ZIP matching your architecture. Most Windows PCs use `win-x64`.
+          Extract the complete folder, then run `NJC AI Monitor.exe`.
 
-          ## 要求
+          ## Requirements
 
-          - Windows 10 1809 或更新版本，推荐 Windows 11
-          - 利民 Trofeo Vision 11.3 LCD（1920×400）
-          - 使用 LCD 前请退出官方 TRCC
+          - Windows 10 1809 or newer; Windows 11 is recommended
+          - Thermalright Trofeo Vision 11.3 LCD (1920×400)
+          - Exit the official TRCC application before using the LCD
           EOF
 
       - name: Create GitHub release

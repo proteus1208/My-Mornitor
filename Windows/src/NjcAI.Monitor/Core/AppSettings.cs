@@ -7,7 +7,6 @@ internal sealed class AppSettings
 {
     private const string RunKey = @"Software\Microsoft\Windows\CurrentVersion\Run";
     private const string RunValue = "NJC AI Monitor";
-    private static readonly string[] LegacyRunValues = ["Thermalright AI Monitor", "MacTR AI Windows"];
 
     public AgentKind LeftAgent { get; set; } = AgentKind.Cursor;
     public AgentKind RightAgent { get; set; } = AgentKind.Codex;
@@ -29,31 +28,13 @@ internal sealed class AppSettings
 
     public static string SettingsPath => Path.Combine(DataDirectory, "settings.json");
 
-    private static IReadOnlyList<string> LegacyDataDirectories
-    {
-        get
-        {
-            var local = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
-            return
-            [
-                Path.Combine(local, "Thermalright AI Monitor"),
-                Path.Combine(local, "MacTR AI"),
-            ];
-        }
-    }
-
     public static AppSettings Load()
     {
         try
         {
-            var source = File.Exists(SettingsPath)
-                ? SettingsPath
-                : LegacyDataDirectories
-                    .Select(directory => Path.Combine(directory, "settings.json"))
-                    .FirstOrDefault(File.Exists);
-            if (source is not null)
+            if (File.Exists(SettingsPath))
             {
-                var settings = JsonSerializer.Deserialize<AppSettings>(File.ReadAllText(source));
+                var settings = JsonSerializer.Deserialize<AppSettings>(File.ReadAllText(SettingsPath));
                 if (settings is not null)
                 {
                     if (!Enum.IsDefined(settings.Theme))
@@ -61,10 +42,6 @@ internal sealed class AppSettings
                         settings.Theme = ColorTheme.BitcoinOrange;
                     }
                     settings.LaunchAtLogin = IsLaunchAtLoginEnabled();
-                    if (!string.Equals(source, SettingsPath, StringComparison.OrdinalIgnoreCase))
-                    {
-                        MigrateLegacyData(Path.GetDirectoryName(source)!);
-                    }
                     if (settings.LaunchAtLogin)
                     {
                         SetLaunchAtLogin(true);
@@ -96,7 +73,7 @@ internal sealed class AppSettings
         try
         {
             using var key = Registry.CurrentUser.OpenSubKey(RunKey);
-            return HasRunValue(key, RunValue) || LegacyRunValues.Any(name => HasRunValue(key, name));
+            return HasRunValue(key, RunValue);
         }
         catch
         {
@@ -118,10 +95,6 @@ internal sealed class AppSettings
             {
                 key.DeleteValue(RunValue, false);
             }
-            foreach (var legacyName in LegacyRunValues)
-            {
-                key.DeleteValue(legacyName, false);
-            }
         }
         catch
         {
@@ -132,20 +105,4 @@ internal sealed class AppSettings
     private static bool HasRunValue(RegistryKey? key, string name) =>
         key?.GetValue(name) is string value && !string.IsNullOrWhiteSpace(value);
 
-    private static void MigrateLegacyData(string legacyDirectory)
-    {
-        Directory.CreateDirectory(DataDirectory);
-        foreach (var name in new[]
-                 {
-                     "settings.json", "news-cache.json", "weather-cache.json", "completion-alerts.json",
-                 })
-        {
-            var source = Path.Combine(legacyDirectory, name);
-            var destination = Path.Combine(DataDirectory, name);
-            if (File.Exists(source) && !File.Exists(destination))
-            {
-                File.Copy(source, destination);
-            }
-        }
-    }
 }

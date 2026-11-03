@@ -4,9 +4,9 @@ internal enum ColorTheme
 {
     BitcoinOrange = 0,
     Web3Emerald = 1,
-    DeepOcean = 2,
-    RoyalIndigo = 3,
+    GraphiteTitanium = 2,
     CyberNeon = 4,
+    SolanaAurora = 5,
 }
 
 internal static class ColorThemeNames
@@ -14,9 +14,9 @@ internal static class ColorThemeNames
     public static string DisplayName(this ColorTheme theme) => theme switch
     {
         ColorTheme.Web3Emerald => "Web3 Emerald",
-        ColorTheme.DeepOcean => "Deep Ocean",
-        ColorTheme.RoyalIndigo => "Royal Indigo",
+        ColorTheme.GraphiteTitanium => "Graphite Titanium",
         ColorTheme.CyberNeon => "Cyber Neon",
+        ColorTheme.SolanaAurora => "Solana Aurora",
         _ => "Bitcoin Orange",
     };
 }

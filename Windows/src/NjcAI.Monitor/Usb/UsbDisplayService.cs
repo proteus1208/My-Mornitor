@@ -20,7 +20,7 @@ internal sealed class UsbDisplayService : IDisposable
 
     public bool IsConnected { get; private set; }
     public DeviceInfo? DeviceInfo { get; private set; }
-    public string Status { get; private set; } = "正在查找 LCD";
+    public string Status { get; private set; } = "Searching for LCD";
     public long FramesSent { get; private set; }
     public int LastFrameBytes { get; private set; }
 
@@ -52,7 +52,7 @@ internal sealed class UsbDisplayService : IDisposable
                     device.ProductId is LyProtocol.ProductLy or LyProtocol.ProductLy1);
                 if (_device is null)
                 {
-                    Status = "未检测到 0416:5408/5409";
+                    Status = "0416:5408/5409 not detected";
                     return false;
                 }
 
@@ -81,11 +81,11 @@ internal sealed class UsbDisplayService : IDisposable
                 if (!LyProtocol.IsTrofeoVision113(DeviceInfo))
                 {
                     throw new NotSupportedException(
-                        $"检测到 {_device.ProductId:X4} · {DeviceInfo.Width}×{DeviceInfo.Height}；" +
-                        "本版本仅支持 Trofeo Vision 11.3（1920×400）");
+                        $"Detected {_device.ProductId:X4} · {DeviceInfo.Width}×{DeviceInfo.Height}; " +
+                        "this build supports only Trofeo Vision 11.3 (1920×400)");
                 }
                 IsConnected = true;
-                Status = $"已连接 {LyProtocol.VendorId:X4}:{_device.ProductId:X4} · {DeviceInfo.Width}×{DeviceInfo.Height}";
+                Status = $"Connected {LyProtocol.VendorId:X4}:{_device.ProductId:X4} · {DeviceInfo.Width}×{DeviceInfo.Height}";
                 Log.Info($"USB connected: {Status}, OUT=0x{outAddress:X2}, IN=0x{inAddress:X2}");
                 return true;
             }
@@ -127,7 +127,7 @@ internal sealed class UsbDisplayService : IDisposable
             }
             catch (Exception exception)
             {
-                Status = $"LCD 连接中断：{exception.Message}";
+                Status = $"LCD connection lost: {exception.Message}";
                 Log.Warn(Status);
                 DisconnectCore(keepStatus: true);
                 _nextConnectAttempt = DateTime.UtcNow.AddSeconds(2);
@@ -163,15 +163,15 @@ internal sealed class UsbDisplayService : IDisposable
                     device.ProductId is LyProtocol.ProductLy or LyProtocol.ProductLy1).ToArray();
                 if (matching.Length == 0)
                 {
-                    return "未检测到利民 LCD（VID 0416，PID 5408/5409）。请检查 USB 线和设备管理器。";
+                    return "Thermalright LCD not detected (VID 0416, PID 5408/5409). Check the USB cable and Device Manager.";
                 }
                 return string.Join(Environment.NewLine, matching.Select(device =>
-                    $"检测到 {device.VendorId:X4}:{device.ProductId:X4}；驱动可见。"));
+                    $"Detected {device.VendorId:X4}:{device.ProductId:X4}; the driver is visible."));
             }
             catch (Exception exception)
             {
-                return $"USB 枚举失败：{exception.Message}{Environment.NewLine}" +
-                       "请退出官方 TRCC，并确认设备使用 WinUSB/libusbK 驱动。";
+                return $"USB enumeration failed: {exception.Message}{Environment.NewLine}" +
+                       "Exit the official TRCC app and confirm that the device uses the WinUSB/libusbK driver.";
             }
         }
     }
@@ -231,14 +231,14 @@ internal sealed class UsbDisplayService : IDisposable
         if (text.Contains("Access", StringComparison.OrdinalIgnoreCase) ||
             text.Contains("Busy", StringComparison.OrdinalIgnoreCase))
         {
-            return "LCD 被其他程序占用；请退出官方 TRCC";
+            return "The LCD is in use by another app; exit the official TRCC app";
         }
         if (text.Contains("NotSupported", StringComparison.OrdinalIgnoreCase) ||
             text.Contains("driver", StringComparison.OrdinalIgnoreCase))
         {
-            return "LCD 驱动不兼容；需要 WinUSB/libusbK";
+            return "The LCD driver is incompatible; WinUSB/libusbK is required";
         }
-        return $"LCD 连接失败：{text}";
+        return $"LCD connection failed: {text}";
     }
 
     private static (bool Available, string Error) CheckNativeRuntime()
@@ -246,21 +246,21 @@ internal sealed class UsbDisplayService : IDisposable
         var path = Path.Combine(AppContext.BaseDirectory, "libusb-1.0.dll");
         if (!File.Exists(path))
         {
-            return (false, "USB 运行库缺失：libusb-1.0.dll；请重新解压完整发布包");
+            return (false, "USB runtime missing: libusb-1.0.dll. Extract the complete release package again.");
         }
 
         try
         {
             if (!NativeLibrary.TryLoad(path, out var handle))
             {
-                return (false, "USB 运行库无法加载；请确认程序包架构与 Windows 一致");
+                return (false, "The USB runtime could not be loaded. Confirm that the package architecture matches Windows.");
             }
             NativeLibrary.Free(handle);
             return (true, string.Empty);
         }
         catch (Exception exception)
         {
-            return (false, $"USB 运行库无法加载：{exception.Message}");
+            return (false, $"The USB runtime could not be loaded: {exception.Message}");
         }
     }
 
@@ -289,7 +289,7 @@ internal sealed class UsbDisplayService : IDisposable
         _context = null;
         if (!keepStatus)
         {
-            Status = "正在查找 LCD";
+            Status = "Searching for LCD";
         }
     }
 

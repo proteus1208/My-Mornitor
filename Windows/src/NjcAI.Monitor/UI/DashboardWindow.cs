@@ -46,7 +46,7 @@ internal sealed class DashboardWindow : Window
         };
         _status = new TextBlock
         {
-            Text = "正在启动…",
+            Text = "Starting…",
             Foreground = new SolidColorBrush(MediaColor.FromRgb(150, 160, 182)),
             Background = new SolidColorBrush(MediaColor.FromRgb(18, 24, 38)),
             Padding = new Thickness(10, 5, 10, 5),
