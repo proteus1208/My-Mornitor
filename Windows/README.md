@@ -25,7 +25,7 @@ WinUSB 向 `0416:5408` LCD 发送 JPEG 帧。
 - 登录自启、JPEG 质量和 180° 旋转设置；
 - 单实例保护：重复双击 EXE 时不会再次连接 USB，而是提示使用现有托盘程序；
 - 自定义青蛙应用图标，并在 EXE、任务栏和系统托盘中统一显示；
-- 设置中可选择 Bitcoin Orange、Web3 Emerald、Cyber Blue 和 Ultraviolet 四套配色；
+- 设置中可选择 Bitcoin Orange、Web3 Emerald、Deep Ocean 和 Royal Indigo 四套配色；
   四套主题共用相同布局、背景结构和动画，所选配色同时应用到 LCD、本机预览及完成提醒；
 - 无硬件预览、USB 诊断、协议与渲染自检。
 
