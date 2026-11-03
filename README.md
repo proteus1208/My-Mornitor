@@ -35,8 +35,8 @@ The first column shows `Agent Working`, while the second shows `Task Completed` 
 - Keeps time, weather, CPU, GPU, memory, and process data in the fixed last column;
 - Tracks BGBL.AX, NDQ.AX, IBIT.AX, IVV.AX, USDT/AUD, BTC, ETH, and WLFI;
 - Uses TextRadar for news and Open-Meteo for weather;
-- Includes four structure-preserving color themes: Bitcoin Orange, Web3 Emerald, Deep Ocean,
-  and Royal Indigo. The selected palette also applies to completion alerts;
+- Includes five structure-preserving color themes: Bitcoin Orange, Web3 Emerald, Deep Ocean,
+  Royal Indigo, and Cyber Neon. The selected palette also applies to completion alerts;
 - Supports the Trofeo Vision 11.3 1920×400 LY USB protocol;
 - Includes tray operation, launch at login, single-instance protection, USB reconnection,
   preview, and 180° rotation;
