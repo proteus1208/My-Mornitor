@@ -31,9 +31,9 @@ internal sealed class DashboardRenderer
     private static Color Green => Web3Green;
     private static Color Yellow => Web3Lime;
     private static Color Red => Palette.Error;
-    private static Color MarketUp => Web3Teal;
-    private static Color MarketUpHighlight => Web3Teal;
-    private static Color MarketDown => Palette.MarketDown;
+    private static Color MarketUp => Color.FromArgb(247, 147, 26);
+    private static Color MarketUpHighlight => Color.FromArgb(247, 147, 26);
+    private static Color MarketDown => Color.FromArgb(0, 229, 153);
     private static Color QuotaOrange => Palette.Quota;
     private static Color Purple => Web3Lime;
     private static Color Orange => Web3Teal;
