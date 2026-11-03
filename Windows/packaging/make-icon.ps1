@@ -2,7 +2,7 @@ $ErrorActionPreference = 'Stop'
 Add-Type -AssemblyName System.Drawing
 
 $projectRoot = Split-Path -Parent $PSScriptRoot
-$source = Join-Path $projectRoot 'src\NjcAI.Monitor\Assets\FroganaIcon.png'
+$source = Join-Path $projectRoot 'src\NjcAI.Monitor\Assets\AppIconSource.png'
 $destination = Join-Path $projectRoot 'src\NjcAI.Monitor\Assets\NjcAI.ico'
 $sizes = @(16, 20, 24, 32, 40, 48, 64, 96, 128, 256)
 $sourceRect = [System.Drawing.Rectangle]::new(140, 30, 520, 520)

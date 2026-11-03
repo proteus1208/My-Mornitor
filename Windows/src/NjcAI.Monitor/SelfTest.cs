@@ -39,7 +39,7 @@ internal static class SelfTest
     {
         var now = DateTime.Now;
         var working = new AgentSnapshot(
-            AgentKind.Codex, true, 100, 20, now, "completion-project", "正在执行测试",
+            AgentKind.Codex, true, 100, 20, now, "completion-project", "Running test",
             true, false, null, "test", null, null, null, null, null, true,
             "completion-session");
         AgentsSnapshot Snapshot(AgentSnapshot codex) => new(
@@ -55,7 +55,7 @@ internal static class SelfTest
         {
             IsWorking = false,
             NeedsAttention = true,
-            Activity = "任务已经完成",
+            Activity = "Task completed",
             LastActive = now.AddSeconds(1),
         };
         var completed = tracker.Update(Snapshot(finished), now.AddSeconds(1));
@@ -212,7 +212,7 @@ internal static class SelfTest
     {
         var renderer = new DashboardRenderer();
         var settings = new AppSettings { LeftAgent = AgentKind.Claude, RightAgent = AgentKind.Codex };
-        using var bitmap = renderer.Render(DemoData.Create(), settings, "自检");
+        using var bitmap = renderer.Render(DemoData.Create(), settings, "Self-test");
         Assert(bitmap.Width == DashboardRenderer.Width && bitmap.Height == DashboardRenderer.Height,
             "render dimensions");
         var jpeg = DashboardRenderer.EncodeJpeg(bitmap, 82, false);
@@ -237,7 +237,7 @@ internal static class SelfTest
         settings.Theme = ColorTheme.BitcoinOrange;
 
         var idle = DemoData.Create() with { Agents = AgentsSnapshot.Empty };
-        using var idleBitmap = new DashboardRenderer().Render(idle, settings, "天气面板自检");
+        using var idleBitmap = new DashboardRenderer().Render(idle, settings, "Weather panel self-test");
         Assert(idleBitmap.Width == 1920 && idleBitmap.Height == 400, "idle weather layout dimensions");
 
         var completedDemo = DemoData.Create(completed: true);
@@ -281,7 +281,7 @@ internal static class SelfTest
                     id = "msg-1",
                     model = "claude-test",
                     usage = new { input_tokens = 100, cache_read_input_tokens = 25, output_tokens = 30 },
-                    content = new[] { new { type = "text", text = "Claude 完成测试" } },
+                    content = new[] { new { type = "text", text = "Claude completion test" } },
                 },
             });
             File.WriteAllText(Path.Combine(claude, "session.jsonl"), claudeLine + Environment.NewLine);
@@ -324,7 +324,7 @@ internal static class SelfTest
                 {
                     timestamp,
                     type = "event_msg",
-                    payload = new { type = "agent_message", message = "Codex 完成测试" },
+                    payload = new { type = "agent_message", message = "Codex completion test" },
                 }),
                 JsonSerializer.Serialize(new
                 {
@@ -339,7 +339,7 @@ internal static class SelfTest
                     payload = new
                     {
                         type = "agent_message",
-                        message = "Codex 正在执行工具",
+                        message = "Codex is running a tool",
                         phase = "commentary",
                     },
                 }),
@@ -381,7 +381,7 @@ internal static class SelfTest
                 {
                     timestamp,
                     type = "event_msg",
-                    payload = new { type = "agent_message", message = "第二个 Codex 会话" },
+                    payload = new { type = "agent_message", message = "Second Codex session" },
                 }),
             };
             var secondCodexPath = Path.Combine(codex, "rollout-second.jsonl");
@@ -439,7 +439,7 @@ internal static class SelfTest
                     message = new
                     {
                         model = "cursor-test",
-                        content = new[] { new { type = "text", text = "Cursor 完成测试" } },
+                        content = new[] { new { type = "text", text = "Cursor completion test" } },
                     },
                 }),
                 JsonSerializer.Serialize(new { type = "turn_ended", status = "completed" }),
@@ -450,7 +450,7 @@ internal static class SelfTest
             var agents = new AgentUsageCollector(root).Collect();
             Assert(agents.Claude.TodayInputTokens == 125 && agents.Claude.TodayOutputTokens == 30,
                 "Claude token parser");
-            Assert(agents.Claude.Activity?.Contains("完成测试", StringComparison.Ordinal) == true,
+            Assert(agents.Claude.Activity?.Contains("completion test", StringComparison.Ordinal) == true,
                 "Claude activity parser");
             Assert(agents.Codex.TodayInputTokens == 200 && agents.Codex.TodayOutputTokens == 40,
                 "Codex token parser");
@@ -471,7 +471,7 @@ internal static class SelfTest
                    !AgentUsageCollector.IsVisibleCodexThreadSource("guardian_review") &&
                    !AgentUsageCollector.IsVisibleCodexThreadSource(null),
                 "Codex user/subagent source allowlist");
-            Assert(agents.Cursor.Activity?.Contains("完成测试", StringComparison.Ordinal) == true,
+            Assert(agents.Cursor.Activity?.Contains("completion test", StringComparison.Ordinal) == true,
                 "Cursor activity parser");
         }
         finally
@@ -487,7 +487,7 @@ internal static class SelfTest
     {
         var now = DateTime.Now;
         AgentSnapshot Agent(AgentKind kind, string id, int minutesAgo = 0) => new(
-            kind, true, 10, 2, now.AddMinutes(-minutesAgo), id, "测试活动",
+            kind, true, 10, 2, now.AddMinutes(-minutesAgo), id, "Test activity",
             minutesAgo == 0, false, null, "test", null, null, null,
             null, null, kind != AgentKind.Cursor, id);
 
@@ -673,26 +673,35 @@ internal static class SelfTest
 
     private static void TestNewsParsing()
     {
-        const string json = """
-            {"items":[{"title":"AI 新闻测试","category":"前沿科技","importance":5,
-            "sources":["a","b"],"published_at":"2026-08-17T08:00:00Z","url":"/cluster/test.html"}]}
+        const string gdeltJson = """
+            {"version":"https://jsonfeed.org/version/1","items":[
+            {"id":"https://example.com/market","url":"https://example.com/market",
+            "title":"Global markets focus on inflation and central bank rates"},
+            {"id":"https://example.com/non-english","url":"https://example.com/non-english",
+            "title":"全球市场新闻"}]}
             """;
-        var fromJson = NewsDataCollector.ParseJson(json, "https://textradar.app/");
-        Assert(fromJson.Count == 1 && fromJson[0].Importance == 5 &&
-               fromJson[0].SourceCount == 2 && fromJson[0].Url.Contains("cluster/test.html"),
-            "TextRadar JSON parser");
+        var gdelt = NewsDataCollector.ParseGdeltJsonFeed(gdeltJson);
+        Assert(gdelt.Count == 1 && gdelt[0].Category == "Markets" &&
+               gdelt[0].Source == "GDELT", "GDELT English JSON Feed parser");
 
-        const string html = """
-            <li class="cluster cat-frontier_tech has-detail">
-              <time datetime="2026-08-17T08:03:36Z">08-17 18:03</time>
-              <span class="cl-cat">前沿科技</span>
-              <a class="cl-title" href="cluster/demo.html">TextRadar &amp; LCD 联动</a>
-              <span class="cl-stars" data-stars="4">★★★★</span>
-            </li>
+        const string hackerNewsJson = """
+            {"id":123,"type":"story","title":"A new open source AI agent runtime",
+            "url":"https://example.com/ai","score":340,"time":1783324800}
             """;
-        var fromHtml = NewsDataCollector.ParseHtml(html, "https://textradar.app/");
-        Assert(fromHtml.Count == 1 && fromHtml[0].Title.Contains("TextRadar & LCD") &&
-               fromHtml[0].Importance == 4, "TextRadar HTML fallback parser");
+        var hackerNews = NewsDataCollector.ParseHackerNewsItem(hackerNewsJson);
+        Assert(hackerNews is { Importance: 5, Source: "Hacker News" },
+            "Hacker News item parser");
+
+        const string rss = """
+            <rss version="2.0"><channel><item>
+            <title>Bitcoin market structure evolves</title>
+            <link>https://example.com/crypto</link><category>Markets</category>
+            <pubDate>Tue, 03 Nov 2026 11:06:10 +0000</pubDate>
+            </item></channel></rss>
+            """;
+        var coinDesk = NewsDataCollector.ParseRss(rss, "CoinDesk", "Crypto");
+        Assert(coinDesk.Count == 1 && coinDesk[0].Source == "CoinDesk" &&
+               coinDesk[0].Url.Contains("crypto"), "CoinDesk RSS parser");
     }
 
     private static void TestWeatherParsing()

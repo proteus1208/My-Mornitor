@@ -12,19 +12,50 @@
 
 四个动态栏显示 Markets、News、AI Quota 和 Forecast，最右栏保持系统与当前天气信息。
 
-![没有活跃 Agent 时的仪表盘](docs/assets/dashboard-no-agent.png)
+**Bitcoin Orange**\
+![Bitcoin Orange 主题下没有活跃 Agent](docs/assets/preview-no-agent-bitcoin-orange.png)\
+**Web3 Emerald**\
+![Web3 Emerald 主题下没有活跃 Agent](docs/assets/preview-no-agent-web3-emerald.png)\
+**Graphite Titanium**\
+![Graphite Titanium 主题下没有活跃 Agent](docs/assets/preview-no-agent-graphite-titanium.png)\
+**Cyber Neon**\
+![Cyber Neon 主题下没有活跃 Agent](docs/assets/preview-no-agent-cyber-neon.png)\
+**Solana Aurora**\
+![Solana Aurora 主题下没有活跃 Agent](docs/assets/preview-no-agent-solana-aurora.png)
 
 ### 2. 一个 Agent 正在工作
 
 工作中的 Agent 占据第一栏，其余栏位依次由 Markets、News 和 AI Quota 补齐。
 
-![一个 Agent 正在工作时的仪表盘](docs/assets/dashboard-one-working.png)
+**Bitcoin Orange**\
+![Bitcoin Orange 主题下一个 Agent 正在工作](docs/assets/preview-one-working-bitcoin-orange.png)\
+**Web3 Emerald**\
+![Web3 Emerald 主题下一个 Agent 正在工作](docs/assets/preview-one-working-web3-emerald.png)\
+**Graphite Titanium**\
+![Graphite Titanium 主题下一个 Agent 正在工作](docs/assets/preview-one-working-graphite-titanium.png)\
+**Cyber Neon**\
+![Cyber Neon 主题下一个 Agent 正在工作](docs/assets/preview-one-working-cyber-neon.png)\
+**Solana Aurora**\
+![Solana Aurora 主题下一个 Agent 正在工作](docs/assets/preview-one-working-solana-aurora.png)
 
 ### 3. 两个 Agent：工作中与刚完成
 
 第一栏展示 `Agent Working`，第二栏展示带持续提醒边框的 `Task Completed`，其余两栏为 Markets 和 News。
 
-![两个 Agent 分别处于工作中和刚完成状态](docs/assets/dashboard-two-agents.png)
+**Bitcoin Orange**\
+![Bitcoin Orange 主题下一个 Agent 工作中、一个刚完成](docs/assets/preview-two-agents-bitcoin-orange-bright.png)\
+**Web3 Emerald**\
+![Web3 Emerald 主题下一个 Agent 工作中、一个刚完成](docs/assets/preview-two-agents-web3-emerald-bright.png)\
+**Graphite Titanium**\
+![Graphite Titanium 主题下一个 Agent 工作中、一个刚完成](docs/assets/preview-two-agents-graphite-titanium-bright.png)\
+**Cyber Neon**\
+![Cyber Neon 主题下一个 Agent 工作中、一个刚完成](docs/assets/preview-two-agents-cyber-neon-bright.png)\
+**Solana Aurora**\
+![Solana Aurora 主题下一个 Agent 工作中、一个刚完成](docs/assets/preview-two-agents-solana-aurora-bright.png)
+
+三个状态都分别展示了全部五种主题。可以随时进入 **Settings → Color Theme** 选择配色，然后点击
+**Save Settings**。主题会同步应用到 LCD、本机预览、Agent 动态状态、行情走势图、Quota
+图形和桌面完成提醒，并在下次启动时自动恢复。
 
 ## 主要功能
 
@@ -33,8 +64,8 @@
 - AI 会话不足时，依次使用 MARKETS、NEWS、AI QUOTA 和未来天气 FORECAST 补位；
 - 最右一栏固定整合时间、天气、CPU、GPU、内存和进程数；
 - 支持 BGBL.AX、NDQ.AX、IBIT.AX、IVV.AX、USDT/AUD、BTC、ETH 和 WLFI 行情；
-- 使用 TextRadar 新闻和 Open-Meteo 天气；
-- 内置 Bitcoin Orange、Web3 Emerald、Deep Ocean、Royal Indigo 和 Cyber Neon 五套同构配色主题，
+- 使用 GDELT、Hacker News 和 CoinDesk 英文新闻，以及 Open-Meteo 天气；
+- 内置 Bitcoin Orange、Web3 Emerald、Graphite Titanium、Cyber Neon 和 Solana Aurora 五套同构配色主题，
   所选主题也会同步应用到任务完成提醒；
 - 支持 Trofeo Vision 11.3 的 1920×400 LY USB 协议；
 - 支持托盘运行、登录自启、单实例保护、USB 热插拔、本机预览和 180° 旋转；

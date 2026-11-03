@@ -136,7 +136,7 @@ internal sealed record MarketSnapshot(
     DateTime? LastAttempt,
     string? Error)
 {
-    public static MarketSnapshot Empty => new([], [], null, "正在连接免费行情");
+    public static MarketSnapshot Empty => new([], [], null, "Connecting to free market data");
 }
 
 internal sealed record NewsArticle(
@@ -145,14 +145,15 @@ internal sealed record NewsArticle(
     int Importance,
     int SourceCount,
     DateTime PublishedAt,
-    string Url);
+    string Url,
+    string Source = "");
 
 internal sealed record NewsSnapshot(
     IReadOnlyList<NewsArticle> Articles,
     DateTime? UpdatedAt,
     string? Error)
 {
-    public static NewsSnapshot Empty => new([], null, "正在连接 TextRadar");
+    public static NewsSnapshot Empty => new([], null, "Connecting to English news sources");
 }
 
 internal sealed record WeatherHour(
@@ -180,7 +181,7 @@ internal sealed record WeatherSnapshot(
 {
     public static WeatherSnapshot Empty(string location = "Sydney") => new(
         location, null, null, null, null, null, null, null,
-        null, null, null, [], null, "正在连接天气服务");
+        null, null, null, [], null, "Connecting to weather service");
 }
 
 internal enum DashboardPanelKind

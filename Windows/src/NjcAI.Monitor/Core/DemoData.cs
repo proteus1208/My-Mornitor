@@ -23,21 +23,21 @@ internal static class DemoData
             0);
         var claude = new AgentSnapshot(
             AgentKind.Claude, true, 48_300_000, 512_000, DateTime.Now.AddMinutes(-35),
-            "NJC AI Monitor", "已完成系统指标采集和 Windows 托盘应用。",
-            false, false, null, "claude-opus", 4, 4, "任务完成", null, null, true, "demo-claude");
+            "NJC AI Monitor", "System metrics and the Windows tray app are complete.",
+            false, false, null, "claude-opus", 4, 4, "Task completed", null, null, true, "demo-claude");
         var codex = new AgentSnapshot(
             AgentKind.Codex, true, 184_000, 24_000, DateTime.Now,
-            "windows-port", "已完成部署，四个模块全部通过构建：\n模块 | 状态\nUSB | 通过\nRenderer | 通过\nAgents | 通过",
-            true, false, null, "gpt-5.6", 4, 6, "生成发布包与使用说明", 57, DateTime.Now.AddDays(5), true,
+            "windows-port", "Deployment complete; all modules passed the build: USB, Renderer, and Agents.",
+            true, false, null, "gpt-5.6", 4, 6, "Build release package and user guide", 57, DateTime.Now.AddDays(5), true,
             "session-windows-port", 10_080);
         var codexSecond = new AgentSnapshot(
             AgentKind.Codex, true, 62_000, 8_400, DateTime.Now.AddMinutes(-40),
-            "market-panel", "已完成行情显示验证。",
-            false, false, null, "gpt-5.6", 4, 4, "任务完成", 57, DateTime.Now.AddDays(5), true,
+            "market-panel", "Market display verification completed.",
+            false, false, null, "gpt-5.6", 4, 4, "Task completed", 57, DateTime.Now.AddDays(5), true,
             "session-market-panel", 10_080);
         var cursor = new AgentSnapshot(
             AgentKind.Cursor, true, 0, 0, DateTime.Now.AddMinutes(-30),
-            "dashboard", "等待新的 Agent 消息…", false, false,
+            "dashboard", "Waiting for a new agent message…", false, false,
             null, "composer", null, null, null, null, null, false, "demo-cursor");
         var markets = new MarketSnapshot(
             [
@@ -68,16 +68,16 @@ internal static class DemoData
             null);
         var news = new NewsSnapshot(
         [
-            new NewsArticle("OpenAI 发布面向开发者的新一代智能体工具", "前沿科技", 5, 4,
-                DateTime.Now.AddMinutes(-12), "https://textradar.app/"),
-            new NewsArticle("全球市场关注本周通胀与就业数据", "国际", 5, 6,
-                DateTime.Now.AddMinutes(-28), "https://textradar.app/"),
-            new NewsArticle("比特币 ETF 连续录得资金净流入", "WEB3", 4, 3,
-                DateTime.Now.AddMinutes(-45), "https://textradar.app/"),
-            new NewsArticle("澳洲市场等待最新利率路径与企业财报指引", "财经", 4, 5,
-                DateTime.Now.AddHours(-1), "https://textradar.app/"),
-            new NewsArticle("人工智能基础设施投资继续成为科技行业焦点", "科技", 3, 2,
-                DateTime.Now.AddHours(-2), "https://textradar.app/"),
+            new NewsArticle("OpenAI releases a new generation of agent tools for developers", "Frontier Tech", 5, 4,
+                DateTime.Now.AddMinutes(-12), "https://news.ycombinator.com/", "Hacker News"),
+            new NewsArticle("Global markets focus on this week's inflation and employment data", "World", 5, 6,
+                DateTime.Now.AddMinutes(-28), "https://www.gdeltproject.org/", "GDELT"),
+            new NewsArticle("Bitcoin ETFs continue to record net inflows", "WEB3", 4, 3,
+                DateTime.Now.AddMinutes(-45), "https://www.coindesk.com/", "CoinDesk"),
+            new NewsArticle("Australian markets await the latest rate path and earnings guidance", "Finance", 4, 5,
+                DateTime.Now.AddHours(-1), "https://www.gdeltproject.org/", "GDELT"),
+            new NewsArticle("AI infrastructure investment remains a focus for the technology sector", "Technology", 3, 2,
+                DateTime.Now.AddHours(-2), "https://news.ycombinator.com/", "Hacker News"),
         ], DateTime.Now, null);
         var weather = new WeatherSnapshot(
             "Sydney", 19, 18, 64, 13, 70, 0.2, 2, 22, 14, 30,
@@ -101,7 +101,7 @@ internal static class DemoData
             CompletedAt = DateTime.Now.AddSeconds(-20),
             StepCurrent = 4,
             StepTotal = 4,
-            StepText = "任务完成",
+            StepText = "Task completed",
         };
         var agents = idle
             ? new AgentsSnapshot(

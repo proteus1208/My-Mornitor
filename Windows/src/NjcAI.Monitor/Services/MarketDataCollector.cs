@@ -72,7 +72,7 @@ internal sealed class MarketDataCollector : IDisposable
             }
             else
             {
-                errors.Add("ASX 延迟行情暂不可用");
+                errors.Add("ASX delayed market data is unavailable");
             }
         }
 
@@ -146,7 +146,7 @@ internal sealed class MarketDataCollector : IDisposable
             else
             {
                 _nextCryptoAt = now.AddSeconds(20);
-                errors.Add("加密货币实时行情暂不可用");
+                errors.Add("Live cryptocurrency data is unavailable");
             }
         }
 

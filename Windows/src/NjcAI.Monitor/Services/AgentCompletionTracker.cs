@@ -133,7 +133,7 @@ internal sealed class AgentCompletionTracker
     private static AgentCompletionAlert CreateAlert(AgentSnapshot agent, DateTime completedAt)
     {
         var activity = string.IsNullOrWhiteSpace(agent.Activity)
-            ? "本轮任务已经完成。"
+            ? "This task has been completed."
             : agent.Activity.ReplaceLineEndings(" ").Trim();
         if (activity.Length > 500)
         {
@@ -142,7 +142,7 @@ internal sealed class AgentCompletionTracker
         return new AgentCompletionAlert(
             agent.Identity,
             agent.Kind,
-            agent.Project ?? "AI 会话",
+            agent.Project ?? "AI Session",
             activity,
             completedAt);
     }

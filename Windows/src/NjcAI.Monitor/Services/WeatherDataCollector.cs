@@ -52,7 +52,7 @@ internal sealed class WeatherDataCollector : IDisposable
             var snapshot = previous with
             {
                 Location = location,
-                Error = "天气数据暂不可用",
+                Error = "Weather data is unavailable",
             };
             Volatile.Write(ref _current, snapshot);
             Log.Warn($"Open-Meteo update failed: {exception.Message}");
