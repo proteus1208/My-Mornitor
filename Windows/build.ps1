@@ -31,8 +31,14 @@ $targetArchitecture = if ($Runtime -eq 'win-arm64') { 'Arm64' } else { 'X64' }
 $processArchitecture = [System.Runtime.InteropServices.RuntimeInformation]::ProcessArchitecture.ToString()
 if ($processArchitecture -eq $targetArchitecture) {
     $test = Start-Process -FilePath $executable -ArgumentList '--self-test' -WindowStyle Hidden -Wait -PassThru
-    if ($test.ExitCode -ne 0) {
-        throw "NJC AI Monitor self-test failed with exit code $($test.ExitCode)."
+    try {
+        $testExitCode = $test.ExitCode
+    }
+    finally {
+        $test.Dispose()
+    }
+    if ($testExitCode -ne 0) {
+        throw "NJC AI Monitor self-test failed with exit code $testExitCode."
     }
 } else {
     Write-Host "Self-test skipped for cross-architecture target $Runtime (host: $processArchitecture)."
