@@ -34,7 +34,7 @@
 - 最右一栏固定整合时间、天气、CPU、GPU、内存和进程数；
 - 支持 BGBL.AX、NDQ.AX、IBIT.AX、IVV.AX、USDT/AUD、BTC、ETH 和 WLFI 行情；
 - 使用 TextRadar 新闻和 Open-Meteo 天气；
-- 内置 Bitcoin Orange、Web3 Emerald、Deep Ocean 和 Royal Indigo 四套同构配色主题，
+- 内置 Bitcoin Orange、Web3 Emerald、Deep Ocean、Royal Indigo 和 Cyber Neon 五套同构配色主题，
   所选主题也会同步应用到任务完成提醒；
 - 支持 Trofeo Vision 11.3 的 1920×400 LY USB 协议；
 - 支持托盘运行、登录自启、单实例保护、USB 热插拔、本机预览和 180° 旋转；

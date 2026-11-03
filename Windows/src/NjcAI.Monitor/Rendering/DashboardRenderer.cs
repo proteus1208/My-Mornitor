@@ -153,7 +153,7 @@ internal sealed class DashboardRenderer
             graphics.DrawLine(gridPen, 0, y, Width, y);
         }
 
-        using var linkPen = new Pen(Color.FromArgb(34, Web3Green), 1.5f);
+        using var linkPen = new Pen(Color.FromArgb(34, Palette.AccentSecondary), 1.5f);
         using var nodeBrush = new SolidBrush(Color.FromArgb(105, Web3Teal));
         Point[] nodes =
         [
@@ -202,14 +202,14 @@ internal sealed class DashboardRenderer
         }
 
         using (var topGradient = new LinearGradientBrush(
-                   new Rectangle(32, 8, Width - 312, 3), Web3Lime, Web3Teal, 0f))
+                   new Rectangle(32, 8, Width - 312, 3), Web3Lime, Palette.AccentSecondary, 0f))
         using (var topPen = new Pen(topGradient, 3))
         {
             graphics.DrawLine(topPen, 32, 9, Width - 280, 9);
         }
         const int lineY = 51;
         using var chainGradient = new LinearGradientBrush(
-            new Rectangle(70, lineY, Width - 140, 2), Web3Lime, Web3Teal, 0f);
+            new Rectangle(70, lineY, Width - 140, 2), Web3Lime, Palette.AccentSecondary, 0f);
         using (var chainPen = new Pen(chainGradient, 2))
         {
             graphics.DrawLine(chainPen, 70, lineY, Width - 70, lineY);
@@ -219,7 +219,7 @@ internal sealed class DashboardRenderer
         {
             var centerX = index * (Width / 5) + Width / 10;
             using var halo = new Pen(Color.FromArgb(210, Web3Green), 2);
-            using var center = new SolidBrush(index == 0 ? Web3Lime : Web3Teal);
+            using var center = new SolidBrush(index == 0 ? Web3Lime : Palette.AccentSecondary);
             graphics.FillEllipse(nodeBackground, centerX - 7, lineY - 7, 14, 14);
             graphics.DrawEllipse(halo, centerX - 7, lineY - 7, 14, 14);
             graphics.FillEllipse(center, centerX - 2, lineY - 2, 4, 4);
