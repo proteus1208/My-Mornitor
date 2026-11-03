@@ -6,6 +6,7 @@ internal enum ColorTheme
     Web3Emerald = 1,
     DeepOcean = 2,
     RoyalIndigo = 3,
+    CyberNeon = 4,
 }
 
 internal static class ColorThemeNames
@@ -15,6 +16,7 @@ internal static class ColorThemeNames
         ColorTheme.Web3Emerald => "Web3 Emerald",
         ColorTheme.DeepOcean => "Deep Ocean",
         ColorTheme.RoyalIndigo => "Royal Indigo",
+        ColorTheme.CyberNeon => "Cyber Neon",
         _ => "Bitcoin Orange",
     };
 }
