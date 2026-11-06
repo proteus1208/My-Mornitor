@@ -50,15 +50,25 @@ internal static class Program
             return WriteSnapshot(output, demo, idleDemo, completedDemo, ParseThemeOverride(args));
         }
 
+        var startupLaunch = args.Contains("--startup", StringComparer.OrdinalIgnoreCase);
+        var backgroundLaunch = args.Contains("--background", StringComparer.OrdinalIgnoreCase);
+        if (startupLaunch)
+        {
+            Thread.Sleep(TimeSpan.FromSeconds(20));
+        }
+
         using var singleInstance = SingleInstanceGuard.TryAcquire();
         if (!singleInstance.HasOwnership)
         {
             Log.Warn("Secondary launch blocked by the single-instance guard");
-            System.Windows.MessageBox.Show(
-                "NJC AI Monitor is already running.\n\nUse the existing system tray icon instead of launching the EXE again.",
-                "NJC AI Monitor",
-                MessageBoxButton.OK,
-                MessageBoxImage.Information);
+            if (!startupLaunch && !backgroundLaunch)
+            {
+                System.Windows.MessageBox.Show(
+                    "NJC AI Monitor is already running.\n\nUse the existing system tray icon instead of launching the EXE again.",
+                    "NJC AI Monitor",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Information);
+            }
             return 0;
         }
 

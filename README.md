@@ -70,8 +70,8 @@ and is restored on the next launch.
 - Includes five structure-preserving color themes: Bitcoin Orange, Web3 Emerald, Graphite
   Titanium, Cyber Neon, and Solana Aurora. The selected palette also applies to completion alerts;
 - Supports the Trofeo Vision 11.3 1920×400 LY USB protocol;
-- Includes tray operation, launch at login, single-instance protection, USB reconnection,
-  preview, and 180° rotation;
+- Includes tray operation, reliable launch at login through a 20-second delayed startup shortcut,
+  single-instance protection, USB reconnection, preview, and 180° rotation;
 - Ships with its runtime and USB dependency, so users do not need a separate .NET installation.
 
 ## Dashboard layout
