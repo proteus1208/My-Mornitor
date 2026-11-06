@@ -3,7 +3,7 @@
 **English** · [简体中文](README.zh-CN.md)
 
 A Windows 10/11 AI-agent dashboard for the Thermalright Trofeo Vision 11.3 LCD.
-It renders Codex, Cursor, Claude Code, memory, market, news, and weather data as a
+It renders Codex, Cursor, Claude Code, Grok Bot, memory, market, news, and weather data as a
 1920×400 five-column dashboard and sends it to the display over USB. A local preview
 is available when the LCD is disconnected.
 
@@ -61,7 +61,9 @@ and is restored on the next launch.
 
 ## Features
 
-- Prioritizes recent Codex, Cursor, and Claude Code sessions in the first four columns, with both workspace and real chat titles;
+- Prioritizes recent Codex, Cursor, Claude Code, and Grok Bot sessions in the first four columns, with both workspace and real chat titles;
+- Reads Grok Bot's local session roster and weekly usage cache to show the selected task and remaining quota without an API key;
+- Lets users choose up to two primary AI Quota gauges and independently add Codex, Claude Code, or Grok Bot progress rows;
 - Uses three agent states—`Agent Working`, `Task Completed`, and `Waiting for You`—with an animated working border and persistent completion acknowledgement cards;
 - Fills unused columns with MARKETS, NEWS, AI QUOTA, and a future-weather FORECAST panel;
 - Keeps time, weather, CPU, GPU, memory, and process data in the fixed last column;
@@ -88,7 +90,7 @@ The display has four dynamic columns and one fixed column. Active AI sessions ta
 
 `Forecast` contains only upcoming conditions, while the fixed column shows current weather, so the two panels do not duplicate one another. Agent panels show the workspace/repository, real chat title, state, and available token/plan progress without displaying conversation text.
 
-The state lifecycle is `Agent Working` → `Task Completed` → `Waiting for You` after acknowledgement. If the same session resumes before acknowledgement, the stale completion alert is cleared automatically and the panel immediately returns to `Agent Working`. A session leaves the dynamic area 10 minutes after its last activity; an unacknowledged completion remains visible only while that session has not resumed.
+The state lifecycle is `Agent Working` → `Task Completed` → `Waiting for You` after acknowledgement. If the same session resumes before acknowledgement, the stale completion alert is cleared automatically and the panel immediately returns to `Agent Working`. A session leaves the dynamic area 5 minutes after its last activity; an unacknowledged completion remains visible only while that session has not resumed.
 
 ## Requirements
 

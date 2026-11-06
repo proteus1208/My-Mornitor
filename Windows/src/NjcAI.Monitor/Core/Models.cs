@@ -5,6 +5,7 @@ internal enum AgentKind
     Claude,
     Codex,
     Cursor,
+    Grok,
 }
 
 internal sealed record SystemSnapshot(
@@ -52,14 +53,16 @@ internal sealed record AgentSnapshot(
     string? SessionId = null,
     int? QuotaWindowMinutes = null,
     DateTime? CompletedAt = null,
-    string? Workspace = null)
+    string? Workspace = null,
+    DateTime? QuotaUpdatedAt = null)
 {
     public ulong TodayTotalTokens => TodayInputTokens + TodayOutputTokens;
     public string Identity => $"{Kind}:{SessionId ?? Project ?? "unknown"}";
 
     public static AgentSnapshot Missing(AgentKind kind) => new(
         kind, false, 0, 0, null, null, null, false, false,
-        null, null, null, null, null, null, null, kind != AgentKind.Cursor);
+        null, null, null, null, null, null, null,
+        kind is not AgentKind.Cursor and not AgentKind.Grok);
 }
 
 internal sealed record AgentCompletionAlert(
@@ -73,8 +76,11 @@ internal sealed record AgentsSnapshot(
     AgentSnapshot Claude,
     AgentSnapshot Codex,
     AgentSnapshot Cursor,
-    IReadOnlyList<AgentSnapshot>? CodexSessions = null)
+    IReadOnlyList<AgentSnapshot>? CodexSessions = null,
+    AgentSnapshot? GrokAgent = null)
 {
+    public AgentSnapshot Grok => GrokAgent ?? AgentSnapshot.Missing(AgentKind.Grok);
+
     public IReadOnlyList<AgentSnapshot> Sessions
     {
         get
@@ -96,6 +102,10 @@ internal sealed record AgentsSnapshot(
             {
                 sessions.Add(Cursor);
             }
+            if (Grok.LastActive is not null)
+            {
+                sessions.Add(Grok);
+            }
             return sessions
                 .GroupBy(session => session.Identity, StringComparer.OrdinalIgnoreCase)
                 .Select(group => group.First())
@@ -108,6 +118,7 @@ internal sealed record AgentsSnapshot(
         AgentKind.Claude => Claude,
         AgentKind.Codex => Codex,
         AgentKind.Cursor => Cursor,
+        AgentKind.Grok => Grok,
         _ => Codex,
     };
 
@@ -115,7 +126,8 @@ internal sealed record AgentsSnapshot(
         AgentSnapshot.Missing(AgentKind.Claude),
         AgentSnapshot.Missing(AgentKind.Codex),
         AgentSnapshot.Missing(AgentKind.Cursor),
-        []);
+        [],
+        AgentSnapshot.Missing(AgentKind.Grok));
 }
 
 internal sealed record MarketQuote(

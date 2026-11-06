@@ -40,6 +40,11 @@ internal sealed class SettingsWindow : Window
     private readonly TextBox _weatherLatitude;
     private readonly TextBox _weatherLongitude;
     private readonly ComboBox _colorTheme;
+    private readonly ComboBox _quotaPrimary1;
+    private readonly ComboBox _quotaPrimary2;
+    private readonly CheckBox _quotaCodexProgress;
+    private readonly CheckBox _quotaClaudeProgress;
+    private readonly CheckBox _quotaGrokProgress;
     private readonly Grid _shell;
     private readonly Border _header;
     private readonly Border _footer;
@@ -53,6 +58,7 @@ internal sealed class SettingsWindow : Window
     private readonly List<Border> _cards = [];
     private readonly List<Border> _inputFrames = [];
     private readonly List<TextBlock> _accentLabels = [];
+    private readonly List<ComboBox> _comboBoxes = [];
     private AppSettings _settings;
 
     public event Action<AppSettings>? Saved;
@@ -101,6 +107,7 @@ internal sealed class SettingsWindow : Window
                 Padding = new Thickness(8, 5, 8, 5),
             });
         }
+        _comboBoxes.Add(_colorTheme);
 
         _themePreviewName = MutedText("Preview only — Save to apply", 11);
         _primarySwatch = Swatch();
@@ -123,6 +130,43 @@ internal sealed class SettingsWindow : Window
             "DYNAMIC DECK",
             "AI sessions take priority. Markets, News, Forecast and AI Quota fill open columns; Memory stays fixed on the right."));
         content.Children.Add(Card("Interface", "Theme and five-column display behavior", interfaceBody));
+
+        _quotaPrimary1 = CreateQuotaAgentSelector();
+        _quotaPrimary2 = CreateQuotaAgentSelector();
+        _comboBoxes.Add(_quotaPrimary1);
+        _comboBoxes.Add(_quotaPrimary2);
+        var quotaPrimaries = new Grid();
+        quotaPrimaries.ColumnDefinitions.Add(new ColumnDefinition());
+        quotaPrimaries.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(12) });
+        quotaPrimaries.ColumnDefinitions.Add(new ColumnDefinition());
+        var quotaPrimary1Field = LabeledComboField("Primary gauge 1", _quotaPrimary1);
+        var quotaPrimary2Field = LabeledComboField("Primary gauge 2", _quotaPrimary2);
+        Grid.SetColumn(quotaPrimary1Field, 0);
+        Grid.SetColumn(quotaPrimary2Field, 2);
+        quotaPrimaries.Children.Add(quotaPrimary1Field);
+        quotaPrimaries.Children.Add(quotaPrimary2Field);
+
+        _quotaCodexProgress = Check(
+            "Codex progress row",
+            "Add Codex to the optional square-meter list.");
+        _quotaClaudeProgress = Check(
+            "Claude Code progress row",
+            "Add Claude Code to the optional square-meter list.");
+        _quotaGrokProgress = Check(
+            "Grok Bot progress row",
+            "Add Grok Bot to the optional square-meter list.");
+        var quotaBody = new StackPanel();
+        quotaBody.Children.Add(quotaPrimaries);
+        var quotaRowsLabel = FieldLabel("Progress rows");
+        quotaRowsLabel.Margin = new Thickness(0, 14, 0, 2);
+        quotaBody.Children.Add(quotaRowsLabel);
+        quotaBody.Children.Add(_quotaCodexProgress);
+        quotaBody.Children.Add(_quotaClaudeProgress);
+        quotaBody.Children.Add(_quotaGrokProgress);
+        quotaBody.Children.Add(InfoStrip(
+            "INDEPENDENT",
+            "Primary gauges and progress rows are selected separately; repeated agents are allowed."));
+        content.Children.Add(Card("AI Quota", "Choose up to two gauges and any progress rows", quotaBody));
 
         _weatherLocation = CreateTextInput();
         _weatherLatitude = CreateTextInput();
@@ -220,6 +264,8 @@ internal sealed class SettingsWindow : Window
                 ApplyThemePreview(theme);
             }
         };
+        _quotaPrimary1.SelectionChanged += (_, _) => KeepQuotaPrimariesDistinct(_quotaPrimary1);
+        _quotaPrimary2.SelectionChanged += (_, _) => KeepQuotaPrimariesDistinct(_quotaPrimary2);
 
         Closing += (_, eventArgs) =>
         {
@@ -365,6 +411,47 @@ internal sealed class SettingsWindow : Window
         FontSize = 13,
         VerticalContentAlignment = VerticalAlignment.Center,
     };
+
+    private static ComboBox CreateQuotaAgentSelector()
+    {
+        var combo = new ComboBox
+        {
+            Height = 38,
+            Padding = new Thickness(10, 4, 10, 4),
+            FontSize = 13,
+            FontWeight = FontWeights.SemiBold,
+            VerticalContentAlignment = VerticalAlignment.Center,
+        };
+        combo.Items.Add(new ComboBoxItem
+        {
+            Content = "None",
+            Tag = null,
+            Padding = new Thickness(8, 5, 8, 5),
+        });
+        foreach (var kind in new[] { AgentKind.Codex, AgentKind.Claude, AgentKind.Grok })
+        {
+            combo.Items.Add(new ComboBoxItem
+            {
+                Content = kind switch
+                {
+                    AgentKind.Claude => "Claude Code",
+                    AgentKind.Grok => "Grok Bot",
+                    _ => "Codex",
+                },
+                Tag = kind,
+                Padding = new Thickness(8, 5, 8, 5),
+            });
+        }
+        return combo;
+    }
+
+    private StackPanel LabeledComboField(string label, ComboBox input)
+    {
+        var stack = new StackPanel();
+        stack.Children.Add(FieldLabel(label));
+        stack.Children.Add(InputFrame(input));
+        return stack;
+    }
 
     private static CheckBox Check(string title, string description)
     {
@@ -520,13 +607,16 @@ internal sealed class SettingsWindow : Window
         {
             label.Foreground = Brush(palette.AccentPrimary);
         }
-        _colorTheme.Template = ComboBoxTemplate(palette);
+        foreach (var combo in _comboBoxes)
+        {
+            combo.Template = ComboBoxTemplate(palette);
+            combo.Foreground = Brush(palette.PrimaryText);
+        }
         var itemStyle = ComboBoxItemStyle(palette);
-        foreach (var item in _colorTheme.Items.OfType<ComboBoxItem>())
+        foreach (var item in _comboBoxes.SelectMany(combo => combo.Items.OfType<ComboBoxItem>()))
         {
             item.Style = itemStyle;
         }
-        _colorTheme.Foreground = Brush(palette.PrimaryText);
         _primarySwatch.Background = Brush(palette.AccentPrimary);
         _middleSwatch.Background = Brush(palette.AccentStrong);
         _secondarySwatch.Background = Brush(palette.AccentSecondary);
@@ -708,6 +798,11 @@ internal sealed class SettingsWindow : Window
         _launch.IsChecked = _settings.LaunchAtLogin;
         _completionNotification.IsChecked = _settings.ShowAgentCompletionNotification;
         _completionSound.IsChecked = _settings.PlayAgentCompletionSound;
+        SelectQuotaAgent(_quotaPrimary1, _settings.QuotaPrimaryAgent1);
+        SelectQuotaAgent(_quotaPrimary2, _settings.QuotaPrimaryAgent2);
+        _quotaCodexProgress.IsChecked = _settings.ShowCodexQuotaProgress;
+        _quotaClaudeProgress.IsChecked = _settings.ShowClaudeQuotaProgress;
+        _quotaGrokProgress.IsChecked = _settings.ShowGrokQuotaProgress;
         _rotate.IsChecked = _settings.RotateDisplay180;
         _colorTheme.SelectedItem = _colorTheme.Items
             .OfType<ComboBoxItem>()
@@ -728,6 +823,11 @@ internal sealed class SettingsWindow : Window
         _settings.LaunchAtLogin = _launch.IsChecked == true;
         _settings.ShowAgentCompletionNotification = _completionNotification.IsChecked == true;
         _settings.PlayAgentCompletionSound = _completionSound.IsChecked == true;
+        _settings.QuotaPrimaryAgent1 = SelectedQuotaAgent(_quotaPrimary1);
+        _settings.QuotaPrimaryAgent2 = SelectedQuotaAgent(_quotaPrimary2);
+        _settings.ShowCodexQuotaProgress = _quotaCodexProgress.IsChecked == true;
+        _settings.ShowClaudeQuotaProgress = _quotaClaudeProgress.IsChecked == true;
+        _settings.ShowGrokQuotaProgress = _quotaGrokProgress.IsChecked == true;
         _settings.RotateDisplay180 = _rotate.IsChecked == true;
         if (_colorTheme.SelectedItem is ComboBoxItem { Tag: ColorTheme theme })
         {
@@ -750,5 +850,28 @@ internal sealed class SettingsWindow : Window
         _settings.Save();
         Saved?.Invoke(_settings);
         Hide();
+    }
+
+    private void KeepQuotaPrimariesDistinct(ComboBox changed)
+    {
+        var selected = SelectedQuotaAgent(changed);
+        if (selected is null)
+        {
+            return;
+        }
+        var other = ReferenceEquals(changed, _quotaPrimary1) ? _quotaPrimary2 : _quotaPrimary1;
+        if (SelectedQuotaAgent(other) == selected)
+        {
+            SelectQuotaAgent(other, null);
+        }
+    }
+
+    private static AgentKind? SelectedQuotaAgent(ComboBox combo) =>
+        combo.SelectedItem is ComboBoxItem { Tag: AgentKind kind } ? kind : null;
+
+    private static void SelectQuotaAgent(ComboBox combo, AgentKind? kind)
+    {
+        combo.SelectedItem = combo.Items.OfType<ComboBoxItem>().First(item =>
+            kind is null ? item.Tag is null : item.Tag is AgentKind value && value == kind);
     }
 }

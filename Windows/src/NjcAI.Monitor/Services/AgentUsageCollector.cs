@@ -27,7 +27,27 @@ internal sealed class AgentUsageCollector
         string? ParentThreadId,
         string? ThreadSource);
 
+    private sealed record GrokQuotaCache(
+        double UsedPercent,
+        DateTime? ResetsAt,
+        DateTime? ReadAt,
+        string? Plan);
+
+    private sealed record GrokRosterItem(
+        string Id,
+        string? Name,
+        string? Title,
+        string? Workspace,
+        string? Activity,
+        DateTime? LastActive,
+        bool HasUnread,
+        bool AwaitingUser,
+        bool Hidden);
+
+    private sealed record GrokTranscriptState(DateTime LastWriteTime);
+
     private readonly string _home;
+    private readonly string _roamingAppData;
     private readonly Dictionary<string, FileProgress> _claudeProgress = new(StringComparer.OrdinalIgnoreCase);
     private readonly Dictionary<string, FileProgress> _codexProgress = new(StringComparer.OrdinalIgnoreCase);
     private readonly Dictionary<string, bool> _codexSessionVisibility = new(StringComparer.OrdinalIgnoreCase);
@@ -43,6 +63,9 @@ internal sealed class AgentUsageCollector
     public AgentUsageCollector(string? home = null)
     {
         _home = home ?? Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+        _roamingAppData = home is null
+            ? Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData)
+            : Path.Combine(_home, "AppData", "Roaming");
     }
 
     public AgentsSnapshot Collect()
@@ -54,7 +77,8 @@ internal sealed class AgentUsageCollector
             CollectClaude(),
             primaryCodex,
             CollectCursor(),
-            codexSessions);
+            codexSessions,
+            CollectGrok());
     }
 
     private AgentSnapshot CollectClaude()
@@ -130,7 +154,7 @@ internal sealed class AgentUsageCollector
         var age = DateTime.Now - latest.LastWriteTime;
         var working = live.Status is "busy" or "shell" ||
                       (live.Status is null && age.TotalSeconds < 90 && lastKind is "tool" or "user");
-        var attention = age.TotalMinutes < 10 &&
+        var attention = age.TotalMinutes < 5 &&
                         (live.Status == "waiting" || live.Status is null && lastKind == "assistant");
         waitingFor = live.WaitingFor;
 
@@ -286,7 +310,7 @@ internal sealed class AgentUsageCollector
         var age = DateTime.Now - lastActive;
         var working = turnState == CodexTurnState.Running && age.TotalMinutes < 30 ||
                       turnState == CodexTurnState.Unknown && age.TotalSeconds < 90;
-        var attention = turnState == CodexTurnState.Completed && age.TotalMinutes < 10;
+        var attention = turnState == CodexTurnState.Completed && age.TotalMinutes < 5;
         _codexProgress.TryGetValue(file.FullName, out var usage);
         return new AgentSnapshot(
             AgentKind.Codex, true, usage?.Input ?? 0, usage?.Output ?? 0, lastActive,
@@ -384,9 +408,326 @@ internal sealed class AgentUsageCollector
         return new AgentSnapshot(
             AgentKind.Cursor, true, 0, 0, latest.LastWriteTime,
             project, activity, age.TotalSeconds < 90 && !turnEnded,
-            age.TotalMinutes < 10 && turnEnded, null, model,
+            age.TotalMinutes < 5 && turnEnded, null, model,
             step?.Current, step?.Total, step?.Text, null, null, false,
             Path.GetFileNameWithoutExtension(latest.Name));
+    }
+
+    private AgentSnapshot CollectGrok()
+    {
+        var persistenceRoot = Path.Combine(
+            _roamingAppData, "Grok Bot", "sand-client-persistence");
+        var processRunning = IsGrokProcessRunning();
+        if (!Directory.Exists(persistenceRoot))
+        {
+            return AgentSnapshot.Missing(AgentKind.Grok) with
+            {
+                Available = processRunning,
+            };
+        }
+
+        GrokQuotaCache? quota = null;
+        List<GrokRosterItem>? roster = null;
+        string? selectedAgentId = null;
+        var hasPendingSend = false;
+        FileInfo[] persistenceFiles;
+        try
+        {
+            persistenceFiles = Directory.EnumerateFiles(persistenceRoot, "*.blob")
+                .Select(path => new FileInfo(path))
+                .Where(file => file.Length is > 0 and <= 4 * 1024 * 1024)
+                .OrderByDescending(file => file.LastWriteTimeUtc)
+                .ToArray();
+            foreach (var path in persistenceFiles)
+            {
+                try
+                {
+                    using var stream = new FileStream(path.FullName, FileMode.Open, FileAccess.Read,
+                        FileShare.ReadWrite | FileShare.Delete);
+                    using var document = JsonDocument.Parse(stream);
+                    if (!TryGet(document.RootElement, "value", out var value) ||
+                        value.ValueKind != JsonValueKind.Object)
+                    {
+                        continue;
+                    }
+
+                    if (quota is null && TryParseGrokQuota(value) is { } parsedQuota)
+                    {
+                        quota = parsedQuota;
+                    }
+                    if (roster is null && TryParseGrokRoster(value) is { } parsedRoster)
+                    {
+                        roster = parsedRoster;
+                    }
+                    if (selectedAgentId is null)
+                    {
+                        selectedAgentId = GetString(value, "agentId");
+                    }
+                    if (TryGet(value, "records", out var records) &&
+                        records.ValueKind == JsonValueKind.Array && records.GetArrayLength() > 0)
+                    {
+                        hasPendingSend = true;
+                    }
+                }
+                catch
+                {
+                    // Grok Bot replaces these cache files while it is running. Retry next refresh.
+                }
+
+            }
+        }
+        catch
+        {
+            // A temporarily unavailable cache should not interrupt the dashboard render loop.
+            persistenceFiles = [];
+        }
+
+        var selected = roster?.FirstOrDefault(item =>
+                           string.Equals(item.Id, selectedAgentId, StringComparison.OrdinalIgnoreCase))
+                       ?? roster?.Where(item => !item.Hidden)
+                           .OrderByDescending(item => item.LastActive)
+                           .FirstOrDefault()
+                       ?? roster?.OrderByDescending(item => item.LastActive).FirstOrDefault();
+        var inflightCount = ReadGrokInflightCount();
+        var transcript = selected is null
+            ? null
+            : ReadGrokTranscriptState(persistenceFiles, selected.Id);
+        var age = selected?.LastActive is { } active
+            ? DateTime.Now - active
+            : TimeSpan.MaxValue;
+        var transcriptAge = transcript is null
+            ? TimeSpan.MaxValue
+            : DateTime.Now - transcript.LastWriteTime;
+        var working = selected is not null &&
+                      (inflightCount > 0 ||
+                       hasPendingSend ||
+                       transcriptAge.TotalSeconds < 5 ||
+                       transcript is null && age.TotalSeconds < 5);
+        var attention = selected is not null && !working && age.TotalMinutes < 5 &&
+                        (selected.AwaitingUser || selected.HasUnread || age.TotalMinutes < 5);
+        var project = selected?.Title ?? selected?.Name;
+        var model = quota?.Plan;
+
+        return new AgentSnapshot(
+            AgentKind.Grok,
+            true,
+            0,
+            0,
+            selected?.LastActive,
+            string.IsNullOrWhiteSpace(project) ? "Grok Bot" : project,
+            selected?.Activity,
+            working,
+            attention,
+            null,
+            model,
+            null,
+            null,
+            null,
+            quota?.UsedPercent,
+            quota?.ResetsAt,
+            false,
+            selected?.Id,
+            quota is null ? null : 10_080,
+            Workspace: selected?.Workspace,
+            QuotaUpdatedAt: quota?.ReadAt);
+    }
+
+    private static GrokQuotaCache? TryParseGrokQuota(JsonElement value)
+    {
+        if (!TryGet(value, "reading", out var reading) ||
+            !TryGet(reading, "usage", out var usage) ||
+            !TryGet(usage, "percentUsed", out var usedValue) ||
+            !usedValue.TryGetDouble(out var used))
+        {
+            return null;
+        }
+
+        var reset = TryGet(usage, "nextResetMs", out var resetValue) &&
+                    resetValue.TryGetInt64(out var resetMs)
+            ? FromUnixMilliseconds(resetMs)
+            : null;
+        var readAt = TryGet(reading, "readAtMs", out var readValue) &&
+                     readValue.TryGetInt64(out var readMs)
+            ? FromUnixMilliseconds(readMs)
+            : null;
+        var plan = GetString(usage, "grokPlanLabel") ?? GetString(usage, "unifiedPlanName");
+        return new GrokQuotaCache(Math.Clamp(used, 0, 100), reset, readAt, Clean(plan));
+    }
+
+    private static List<GrokRosterItem>? TryParseGrokRoster(JsonElement value)
+    {
+        if (!TryGet(value, "rows", out var rows) || rows.ValueKind != JsonValueKind.Array)
+        {
+            return null;
+        }
+
+        var result = new List<GrokRosterItem>();
+        foreach (var row in rows.EnumerateArray())
+        {
+            var id = GetString(row, "id");
+            if (string.IsNullOrWhiteSpace(id))
+            {
+                continue;
+            }
+
+            string? activity = null;
+            if (TryGet(row, "lastEntry", out var lastEntry))
+            {
+                if (TryGet(lastEntry, "sessionPreview", out var preview))
+                {
+                    activity = GetString(preview, "text");
+                }
+                activity ??= GetString(lastEntry, "text");
+            }
+            var lastActive = LatestGrokTimestamp(row,
+                "lastActivityAt", "localActivityAt", "updatedAt");
+            var path = GetString(row, "path");
+            var workspace = string.IsNullOrWhiteSpace(path)
+                ? null
+                : Path.GetFileName(path.TrimEnd(
+                    Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar));
+            var hasUnread = TryGet(row, "hasUnread", out var unreadValue) &&
+                            unreadValue.ValueKind == JsonValueKind.True;
+            var awaiting = TryGet(row, "awaitingUserResponse", out var awaitingValue) &&
+                           awaitingValue.ValueKind is not JsonValueKind.Null and
+                               not JsonValueKind.Undefined and not JsonValueKind.False;
+            var hidden = TryGet(row, "isHiddenFromSidebar", out var hiddenValue) &&
+                         hiddenValue.ValueKind == JsonValueKind.True ||
+                         TryGet(row, "isRemovedFromSidebar", out var removedValue) &&
+                         removedValue.ValueKind == JsonValueKind.True;
+            result.Add(new GrokRosterItem(
+                id,
+                Clean(GetString(row, "name")),
+                Clean(GetString(row, "title")),
+                Clean(workspace),
+                Clean(activity),
+                lastActive,
+                hasUnread,
+                awaiting,
+                hidden));
+        }
+        return result;
+    }
+
+    private static DateTime? LatestGrokTimestamp(JsonElement row, params string[] properties)
+    {
+        DateTime? latest = null;
+        foreach (var property in properties)
+        {
+            if (!TryGet(row, property, out var value) || !value.TryGetInt64(out var milliseconds))
+            {
+                continue;
+            }
+            var timestamp = FromUnixMilliseconds(milliseconds);
+            if (timestamp is not null && (latest is null || timestamp > latest))
+            {
+                latest = timestamp;
+            }
+        }
+        return latest;
+    }
+
+    private static DateTime? FromUnixMilliseconds(long milliseconds)
+    {
+        try
+        {
+            return DateTimeOffset.FromUnixTimeMilliseconds(milliseconds).LocalDateTime;
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    private int ReadGrokInflightCount()
+    {
+        var path = Path.Combine(_home, ".grokbot", "local-exec-daemon.json");
+        try
+        {
+            using var stream = new FileStream(path, FileMode.Open, FileAccess.Read,
+                FileShare.ReadWrite | FileShare.Delete);
+            using var document = JsonDocument.Parse(stream);
+            return TryGet(document.RootElement, "inflightCount", out var count) &&
+                   count.TryGetInt32(out var value)
+                ? Math.Max(0, value)
+                : 0;
+        }
+        catch
+        {
+            return 0;
+        }
+    }
+
+    private static GrokTranscriptState? ReadGrokTranscriptState(
+        IEnumerable<FileInfo> files,
+        string agentId)
+    {
+        var suffix = $".transcript.replicas.{agentId}";
+        foreach (var file in files)
+        {
+            var key = DecodeGrokPersistenceKey(file);
+            if (!string.IsNullOrWhiteSpace(key) && key.EndsWith(suffix, StringComparison.OrdinalIgnoreCase))
+            {
+                return new GrokTranscriptState(file.LastWriteTime);
+            }
+        }
+        return null;
+    }
+
+    private static string? DecodeGrokPersistenceKey(FileInfo file)
+    {
+        const string alphabet = "abcdefghijklmnopqrstuvwxyz234567";
+        var encoded = Path.GetFileNameWithoutExtension(file.Name).ToLowerInvariant();
+        if (encoded.Length == 0)
+        {
+            return null;
+        }
+
+        var bytes = new List<byte>(encoded.Length * 5 / 8);
+        var buffer = 0;
+        var bits = 0;
+        foreach (var character in encoded)
+        {
+            var value = alphabet.IndexOf(character);
+            if (value < 0)
+            {
+                return null;
+            }
+            buffer = (buffer << 5) | value;
+            bits += 5;
+            if (bits < 8)
+            {
+                continue;
+            }
+            bits -= 8;
+            bytes.Add((byte)(buffer >> bits));
+            buffer &= (1 << bits) - 1;
+        }
+        try
+        {
+            return Encoding.UTF8.GetString(bytes.ToArray());
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    private static bool IsGrokProcessRunning()
+    {
+        try
+        {
+            var processes = Process.GetProcessesByName("Grok Bot");
+            foreach (var process in processes)
+            {
+                process.Dispose();
+            }
+            return processes.Length > 0;
+        }
+        catch
+        {
+            return false;
+        }
     }
 
     private void UpdateTokenProgress(

@@ -240,6 +240,27 @@ internal static class SelfTest
         using var idleBitmap = new DashboardRenderer().Render(idle, settings, "Weather panel self-test");
         Assert(idleBitmap.Width == 1920 && idleBitmap.Height == 400, "idle weather layout dimensions");
 
+        settings.QuotaPrimaryAgent1 = AgentKind.Claude;
+        settings.QuotaPrimaryAgent2 = null;
+        settings.ShowCodexQuotaProgress = true;
+        settings.ShowClaudeQuotaProgress = true;
+        settings.ShowGrokQuotaProgress = true;
+        using var singleQuotaBitmap = new DashboardRenderer().Render(
+            DemoData.Create(idle: true), settings, "Single quota gauge self-test");
+        Assert(singleQuotaBitmap.Width == 1920 && singleQuotaBitmap.Height == 400,
+            "single quota gauge with three progress rows renders");
+
+        settings.QuotaPrimaryAgent1 = null;
+        settings.QuotaPrimaryAgent2 = null;
+        using var rowsOnlyQuotaBitmap = new DashboardRenderer().Render(
+            DemoData.Create(idle: true), settings, "Quota rows-only self-test");
+        Assert(rowsOnlyQuotaBitmap.Width == 1920 && rowsOnlyQuotaBitmap.Height == 400 &&
+               AppSettings.IsQuotaAgent(AgentKind.Codex) &&
+               AppSettings.IsQuotaAgent(AgentKind.Claude) &&
+               AppSettings.IsQuotaAgent(AgentKind.Grok) &&
+               !AppSettings.IsQuotaAgent(AgentKind.Cursor),
+            "quota rows-only layout and supported-agent allowlist");
+
         var completedDemo = DemoData.Create(completed: true);
         var completedPanels = new DynamicPanelResolver().Resolve(completedDemo.Agents, DateTime.Now);
         var completedAgents = completedPanels
@@ -262,9 +283,11 @@ internal static class SelfTest
             var codex = Path.Combine(root, ".codex", "sessions", oldSessionDay.ToString("yyyy"),
                 oldSessionDay.ToString("MM"), oldSessionDay.ToString("dd"));
             var cursor = Path.Combine(root, ".cursor", "projects", "demo", "agent-transcripts", "abc");
+            var grok = Path.Combine(root, "AppData", "Roaming", "Grok Bot", "sand-client-persistence");
             Directory.CreateDirectory(claude);
             Directory.CreateDirectory(codex);
             Directory.CreateDirectory(cursor);
+            Directory.CreateDirectory(grok);
             var workingCopy = Path.Combine(root, "workspace", "sample-workspace");
             var dotGit = Path.Combine(workingCopy, ".git");
             Directory.CreateDirectory(dotGit);
@@ -447,7 +470,82 @@ internal static class SelfTest
             File.WriteAllText(Path.Combine(cursor, "abc.jsonl"),
                 string.Join(Environment.NewLine, cursorLines) + Environment.NewLine);
 
-            var agents = new AgentUsageCollector(root).Collect();
+            var grokNow = DateTimeOffset.Now.AddSeconds(-10).ToUnixTimeMilliseconds();
+            var grokReset = DateTimeOffset.Now.AddDays(4).ToUnixTimeMilliseconds();
+            File.WriteAllText(Path.Combine(grok, "quota.blob"), JsonSerializer.Serialize(new
+            {
+                schemaVersion = 2,
+                value = new
+                {
+                    kind = "present",
+                    reading = new
+                    {
+                        usage = new
+                        {
+                            percentUsed = 31.2,
+                            nextResetMs = grokReset,
+                            grokPlanLabel = "SuperGrok",
+                        },
+                        readAtMs = grokNow,
+                    },
+                },
+            }));
+            File.WriteAllText(Path.Combine(grok, "roster.blob"), JsonSerializer.Serialize(new
+            {
+                schemaVersion = 1,
+                value = new
+                {
+                    rows = new[]
+                    {
+                        new
+                        {
+                            id = "grok-test-session",
+                            name = "Grok Test Task",
+                            title = "Grok Local Session",
+                            path = Path.Combine(root, "workspace", "grok-project"),
+                            updatedAt = grokNow,
+                            lastActivityAt = grokNow,
+                            localActivityAt = grokNow,
+                            lastEntry = new
+                            {
+                                text = "Grok completion test",
+                                sessionPreview = new { kind = "message_text", text = "Grok completion test" },
+                            },
+                            hasUnread = true,
+                            awaitingUserResponse = (object?)null,
+                            isHiddenFromSidebar = false,
+                            isRemovedFromSidebar = false,
+                        },
+                    },
+                },
+            }));
+            File.WriteAllText(Path.Combine(grok, "selection.blob"), JsonSerializer.Serialize(new
+            {
+                schemaVersion = 1,
+                value = new { agentId = "grok-test-session" },
+            }));
+            var transcriptKey = "sand.client.slice.account.selftest.transcript.replicas.grok-test-session";
+            var transcriptPath = Path.Combine(grok, $"{Base32Encode(transcriptKey)}.blob");
+            File.WriteAllText(transcriptPath, JsonSerializer.Serialize(new
+            {
+                schemaVersion = 1,
+                value = new
+                {
+                    entries = new[]
+                    {
+                        new
+                        {
+                            kind = "send-message",
+                            id = "assistant-message",
+                            message = new { type = "text", content = "Grok completion test" },
+                            timestampMs = grokNow,
+                        },
+                    },
+                },
+            }));
+
+            var collector = new AgentUsageCollector(root);
+            var agents = collector.Collect();
             Assert(agents.Claude.TodayInputTokens == 125 && agents.Claude.TodayOutputTokens == 30,
                 "Claude token parser");
             Assert(agents.Claude.Activity?.Contains("completion test", StringComparison.Ordinal) == true,
@@ -473,6 +571,22 @@ internal static class SelfTest
                 "Codex user/subagent source allowlist");
             Assert(agents.Cursor.Activity?.Contains("completion test", StringComparison.Ordinal) == true,
                 "Cursor activity parser");
+            Assert(agents.Grok.Available && agents.Grok.SessionId == "grok-test-session" &&
+                   agents.Grok.Project == "Grok Local Session" &&
+                   agents.Grok.Workspace == "grok-project" &&
+                   agents.Grok.Activity?.Contains("completion test", StringComparison.Ordinal) == true &&
+                   agents.Grok.IsWorking,
+                "Grok roster and selected session parser");
+            Assert(Math.Abs(agents.Grok.QuotaUsedPercent.GetValueOrDefault() - 31.2) < 0.001 &&
+                   agents.Grok.QuotaWindowMinutes == 10_080 &&
+                   agents.Grok.QuotaResetsAt is not null &&
+                   agents.Grok.QuotaUpdatedAt is not null &&
+                   agents.Grok.Model == "SuperGrok" && !agents.Grok.HasTokenUsage,
+                "Grok local weekly quota parser");
+            File.SetLastWriteTime(transcriptPath, DateTime.Now.AddSeconds(-10));
+            var settledGrok = collector.Collect().Grok;
+            Assert(!settledGrok.IsWorking && settledGrok.NeedsAttention,
+                "Grok switches from working after transcript writes settle for five seconds");
         }
         finally
         {
@@ -530,12 +644,12 @@ internal static class SelfTest
                  DashboardPanelKind.Forecast]),
             "no agents adds markets news AI quota and forecast");
 
-        var expired = Agent(AgentKind.Codex, "expired", 11) with { IsWorking = false };
+        var expired = Agent(AgentKind.Codex, "expired", 6) with { IsWorking = false };
         panels = new DynamicPanelResolver().Resolve(new AgentsSnapshot(
             AgentSnapshot.Missing(AgentKind.Claude), expired,
             AgentSnapshot.Missing(AgentKind.Cursor), [expired]), now);
         Assert(panels.All(panel => panel.Kind != DashboardPanelKind.Agent),
-            "inactive agents leave the dashboard after ten minutes");
+            "inactive agents leave the dashboard after five minutes");
 
         var stableResolver = new DynamicPanelResolver(replacementCooldown: TimeSpan.FromSeconds(30));
         var first = Agent(AgentKind.Codex, "first", 1) with { IsWorking = false };
@@ -731,5 +845,30 @@ internal static class SelfTest
         {
             throw new InvalidOperationException($"Self-test assertion failed: {name}");
         }
+    }
+
+    private static string Base32Encode(string text)
+    {
+        const string alphabet = "abcdefghijklmnopqrstuvwxyz234567";
+        var bytes = System.Text.Encoding.UTF8.GetBytes(text);
+        var result = new System.Text.StringBuilder((bytes.Length * 8 + 4) / 5);
+        var buffer = 0;
+        var bits = 0;
+        foreach (var value in bytes)
+        {
+            buffer = (buffer << 8) | value;
+            bits += 8;
+            while (bits >= 5)
+            {
+                bits -= 5;
+                result.Append(alphabet[(buffer >> bits) & 31]);
+                buffer &= (1 << bits) - 1;
+            }
+        }
+        if (bits > 0)
+        {
+            result.Append(alphabet[(buffer << (5 - bits)) & 31]);
+        }
+        return result.ToString();
     }
 }

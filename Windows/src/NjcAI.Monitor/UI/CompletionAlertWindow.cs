@@ -281,6 +281,7 @@ internal sealed class CompletionAlertWindow : Window
     {
         AgentKind.Claude => "Claude Code",
         AgentKind.Cursor => "Cursor",
+        AgentKind.Grok => "Grok Bot",
         _ => "Codex",
     };
 

@@ -68,7 +68,7 @@ internal sealed class DashboardRenderer
                 ? flashOn ? Palette.CompletionBright : Palette.CompletionDim
                 : PanelAccent(dynamicPanels[index]);
             DrawPanel(graphics, panelRects[index], accent, completionActive, flashOn, index + 1);
-            DrawDynamicPanel(graphics, dynamicPanels[index], panelRects[index], snapshot);
+            DrawDynamicPanel(graphics, dynamicPanels[index], panelRects[index], snapshot, settings);
         }
         DrawPanel(graphics, panelRects[4], Cyan, panelIndex: 5);
         DrawToday(graphics, snapshot.System, snapshot.Weather ?? WeatherSnapshot.Empty(), panelRects[4]);
@@ -79,7 +79,8 @@ internal sealed class DashboardRenderer
         Graphics graphics,
         DashboardPanel panel,
         Rectangle rect,
-        DashboardSnapshot snapshot)
+        DashboardSnapshot snapshot,
+        AppSettings settings)
     {
         switch (panel.Kind)
         {
@@ -96,7 +97,7 @@ internal sealed class DashboardRenderer
                 DrawForecast(graphics, snapshot.Weather ?? WeatherSnapshot.Empty(), rect);
                 break;
             case DashboardPanelKind.AiQuota:
-                DrawAiQuota(graphics, snapshot.Agents, rect);
+                DrawAiQuota(graphics, snapshot.Agents, settings, rect);
                 break;
         }
     }
@@ -269,6 +270,7 @@ internal sealed class DashboardRenderer
         {
             AgentKind.Claude => "Claude Code",
             AgentKind.Cursor => "Cursor",
+            AgentKind.Grok => "Grok Bot",
             _ => "Codex",
         };
         var statusColor = completed || agent.IsWorking
@@ -759,77 +761,181 @@ internal sealed class DashboardRenderer
         graphics.FillEllipse(endpointCore, endpoint.X - 2.1f, endpoint.Y - 2.1f, 4.2f, 4.2f);
     }
 
-    private static void DrawAiQuota(Graphics graphics, AgentsSnapshot agents, Rectangle rect)
+    private static void DrawAiQuota(
+        Graphics graphics,
+        AgentsSnapshot agents,
+        AppSettings settings,
+        Rectangle rect)
     {
-        var codexQuota = (agents.CodexSessions ?? Array.Empty<AgentSnapshot>())
-            .Append(agents.Codex)
-            .Where(agent => agent.Kind == AgentKind.Codex && agent.QuotaUsedPercent is not null)
-            .OrderByDescending(agent => agent.LastActive)
-            .FirstOrDefault();
-        var claudeQuota = agents.Claude.QuotaUsedPercent is not null ? agents.Claude : null;
-        var updatedAt = new[] { codexQuota?.LastActive, claudeQuota?.LastActive }
+        var primaryKinds = new List<AgentKind>(2);
+        if (settings.QuotaPrimaryAgent1 is { } primary1 && AppSettings.IsQuotaAgent(primary1))
+        {
+            primaryKinds.Add(primary1);
+        }
+        if (settings.QuotaPrimaryAgent2 is { } primary2 && AppSettings.IsQuotaAgent(primary2) &&
+            !primaryKinds.Contains(primary2))
+        {
+            primaryKinds.Add(primary2);
+        }
+
+        var progressKinds = new List<AgentKind>(3);
+        if (settings.ShowCodexQuotaProgress)
+        {
+            progressKinds.Add(AgentKind.Codex);
+        }
+        if (settings.ShowClaudeQuotaProgress)
+        {
+            progressKinds.Add(AgentKind.Claude);
+        }
+        if (settings.ShowGrokQuotaProgress)
+        {
+            progressKinds.Add(AgentKind.Grok);
+        }
+
+        var selectedKinds = primaryKinds.Concat(progressKinds).Distinct().ToArray();
+        var selectedQuotas = selectedKinds
+            .Select(kind => ResolveQuotaAgent(agents, kind))
+            .ToArray();
+        var updatedAt = selectedQuotas
+            .Select(agent => agent.QuotaUpdatedAt ?? agent.LastActive)
             .Where(value => value is not null)
             .Max();
-        var codexRemaining = codexQuota?.QuotaUsedPercent is { } used
-            ? Math.Clamp(100 - used, 0, 100)
-            : (double?)null;
-        DrawColumnHeader(graphics, rect, "AI Quota",
-            codexRemaining is { } value ? $"{value:0}% Left" : "Local",
-            codexRemaining is null ? SecondaryText : Green);
-
-        var center = new Point(rect.Left + rect.Width / 2, rect.Top + 136);
-        if (codexQuota?.QuotaUsedPercent is { } codexUsed)
+        var headerStatus = primaryKinds.Count switch
         {
-            var remaining = Math.Clamp(100 - codexUsed, 0, 100);
-            DrawGauge(graphics, center, 67, remaining, QuotaOrange);
-            DrawCenteredText(graphics, $"{remaining:0}%", center.X, rect.Top + 116,
-                27, PrimaryText, FontStyle.Bold);
-            DrawCenteredText(graphics, "Codex credit", center.X, rect.Top + 154,
-                9, QuotaOrange, FontStyle.Bold);
+            1 when ResolveQuotaAgent(agents, primaryKinds[0]).QuotaUsedPercent is { } used =>
+                $"{Math.Clamp(100 - used, 0, 100):0}% Left",
+            2 => "2 Primary",
+            _ when progressKinds.Count > 0 => $"{progressKinds.Count} Rows",
+            _ => "Local",
+        };
+        DrawColumnHeader(graphics, rect, "AI Quota", headerStatus,
+            selectedQuotas.Any(agent => agent.QuotaUsedPercent is not null) ? Green : SecondaryText);
+
+        if (primaryKinds.Count == 1)
+        {
+            DrawPrimaryQuota(graphics, ResolveQuotaAgent(agents, primaryKinds[0]),
+                new Point(rect.Left + rect.Width / 2, rect.Top + 126), 58, 27);
+        }
+        else if (primaryKinds.Count >= 2)
+        {
+            DrawPrimaryQuota(graphics, ResolveQuotaAgent(agents, primaryKinds[0]),
+                new Point(rect.Left + 105, rect.Top + 126), 45, 21);
+            DrawPrimaryQuota(graphics, ResolveQuotaAgent(agents, primaryKinds[1]),
+                new Point(rect.Right - 105, rect.Top + 126), 45, 21);
         }
         else
         {
-            DrawGauge(graphics, center, 67, 0, SecondaryText);
-            DrawCenteredText(graphics, "--", center.X, rect.Top + 116,
-                27, SecondaryText, FontStyle.Bold);
-            DrawCenteredText(graphics, "Codex credit", center.X, rect.Top + 154,
-                9, SecondaryText, FontStyle.Bold);
+            DrawCenteredText(graphics, "No primary gauges",
+                rect.Left + rect.Width / 2, rect.Top + 105, 13, SecondaryText, FontStyle.Bold);
         }
 
-        DrawText(graphics, "Reset", rect.Left + 22, rect.Top + 224,
-            9, SecondaryText, FontStyle.Bold);
-        DrawRightText(graphics,
-            codexQuota is null ? "--" : FormatQuotaReset(codexQuota.QuotaResetsAt),
-            rect.Right - 22, rect.Top + 224, 11, PrimaryText, FontStyle.Bold);
-        DrawBlockMeter(graphics,
-            new Rectangle(rect.Left + 22, rect.Top + 250, rect.Width - 44, 8),
-            (codexRemaining ?? 0) / 100);
-
-        DrawText(graphics, "Claude", rect.Left + 22, rect.Top + 279,
-            9, SecondaryText, FontStyle.Bold);
-        if (claudeQuota?.QuotaUsedPercent is { } claudeUsed)
+        var progressTop = primaryKinds.Count == 0 ? rect.Top + 145 : rect.Top + 210;
+        if (progressKinds.Count == 0)
         {
-            var remaining = Math.Clamp(100 - claudeUsed, 0, 100);
-            DrawRightText(graphics, $"{remaining:0}% Left · {FormatQuotaWindow(claudeQuota.QuotaWindowMinutes)}",
-                rect.Right - 22, rect.Top + 277, 11, Yellow, FontStyle.Bold);
-            DrawBlockMeter(graphics,
-                new Rectangle(rect.Left + 22, rect.Top + 301, rect.Width - 44, 8),
-                remaining / 100);
+            DrawCenteredText(graphics, "No progress rows",
+                rect.Left + rect.Width / 2, progressTop + 20, 10, SecondaryText, FontStyle.Bold);
         }
         else
         {
-            DrawRightText(graphics, agents.Claude.Available ? "Await /usage" : "Not connected",
-                rect.Right - 22, rect.Top + 277, 11,
-                agents.Claude.Available ? Yellow : SecondaryText, FontStyle.Bold);
-            DrawBlockMeter(graphics,
-                new Rectangle(rect.Left + 22, rect.Top + 301, rect.Width - 44, 8),
-                0);
+            for (var index = 0; index < progressKinds.Count; index++)
+            {
+                DrawQuotaProgressRow(graphics, ResolveQuotaAgent(agents, progressKinds[index]),
+                    rect, progressTop + index * 37);
+            }
         }
 
         DrawCenteredText(graphics,
             updatedAt is { } updated ? $"Local quota · Updated {updated:HH:mm}" : "Local quota source",
-            rect.Left + rect.Width / 2, rect.Top + 317, 8, SecondaryText, FontStyle.Bold);
+            rect.Left + rect.Width / 2, rect.Top + 319, 8, SecondaryText, FontStyle.Bold);
     }
+
+    private static AgentSnapshot ResolveQuotaAgent(AgentsSnapshot agents, AgentKind kind)
+    {
+        if (kind != AgentKind.Codex)
+        {
+            return agents.Get(kind);
+        }
+        return (agents.CodexSessions ?? Array.Empty<AgentSnapshot>())
+                   .Append(agents.Codex)
+                   .Where(agent => agent.Kind == AgentKind.Codex && agent.QuotaUsedPercent is not null)
+                   .OrderByDescending(agent => agent.QuotaUpdatedAt ?? agent.LastActive)
+                   .FirstOrDefault()
+               ?? agents.Codex;
+    }
+
+    private static void DrawPrimaryQuota(
+        Graphics graphics,
+        AgentSnapshot agent,
+        Point center,
+        int radius,
+        float percentageSize)
+    {
+        var color = QuotaAgentColor(agent.Kind);
+        var remaining = agent.QuotaUsedPercent is { } used
+            ? Math.Clamp(100 - used, 0, 100)
+            : (double?)null;
+        DrawGauge(graphics, center, radius, remaining ?? 0,
+            remaining is null ? SecondaryText : color);
+        DrawCenteredText(graphics, remaining is { } value ? $"{value:0}%" : "--",
+            center.X, center.Y - percentageSize * 0.7f,
+            percentageSize, remaining is null ? SecondaryText : PrimaryText, FontStyle.Bold);
+        DrawCenteredText(graphics, QuotaAgentName(agent.Kind),
+            center.X, center.Y + radius * 0.4f,
+            9, remaining is null ? SecondaryText : color, FontStyle.Bold);
+        var resetText = remaining is null
+            ? QuotaUnavailableText(agent)
+            : FormatQuotaReset(agent.QuotaResetsAt);
+        DrawCenteredText(graphics, resetText,
+            center.X, center.Y + radius + 10,
+            8, remaining is null ? SecondaryText : PrimaryText, FontStyle.Bold);
+    }
+
+    private static void DrawQuotaProgressRow(
+        Graphics graphics,
+        AgentSnapshot agent,
+        Rectangle rect,
+        int y)
+    {
+        var color = QuotaAgentColor(agent.Kind);
+        var remaining = agent.QuotaUsedPercent is { } used
+            ? Math.Clamp(100 - used, 0, 100)
+            : (double?)null;
+        DrawText(graphics, QuotaAgentName(agent.Kind), rect.Left + 22, y,
+            9, SecondaryText, FontStyle.Bold);
+        DrawRightText(graphics,
+            remaining is { } value
+                ? $"{value:0}% Left · {FormatQuotaWindow(agent.QuotaWindowMinutes)}"
+                : QuotaUnavailableText(agent),
+            rect.Right - 22, y - 2, 11,
+            remaining is null ? SecondaryText : color, FontStyle.Bold);
+        DrawBlockMeter(graphics,
+            new Rectangle(rect.Left + 22, y + 18, rect.Width - 44, 8),
+            (remaining ?? 0) / 100,
+            color);
+    }
+
+    private static string QuotaAgentName(AgentKind kind) => kind switch
+    {
+        AgentKind.Claude => "Claude",
+        AgentKind.Grok => "Grok",
+        _ => "Codex",
+    };
+
+    private static Color QuotaAgentColor(AgentKind kind) => kind switch
+    {
+        AgentKind.Claude => Yellow,
+        AgentKind.Grok => Web3Green,
+        _ => QuotaOrange,
+    };
+
+    private static string QuotaUnavailableText(AgentSnapshot agent) => agent.Available
+        ? agent.Kind switch
+        {
+            AgentKind.Claude => "Await /usage",
+            AgentKind.Grok => "Await sync",
+            _ => "Await sync",
+        }
+        : "Not connected";
 
     private static void DrawToday(
         Graphics graphics,

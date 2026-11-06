@@ -461,6 +461,7 @@ internal sealed class AppController : IDisposable
             Codex = Clear(_agents.Codex),
             Cursor = Clear(_agents.Cursor),
             CodexSessions = _agents.CodexSessions?.Select(Clear).ToArray(),
+            GrokAgent = Clear(_agents.Grok),
         };
     }
 
