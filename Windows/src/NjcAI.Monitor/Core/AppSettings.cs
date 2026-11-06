@@ -1,3 +1,5 @@
+using System.Reflection;
+using System.Runtime.InteropServices;
 using System.Text.Json;
 using Microsoft.Win32;
 
@@ -7,6 +9,7 @@ internal sealed class AppSettings
 {
     private const string RunKey = @"Software\Microsoft\Windows\CurrentVersion\Run";
     private const string RunValue = "NJC AI Monitor";
+    private const string StartupShortcutName = "NJC AI Monitor.lnk";
 
     public AgentKind LeftAgent { get; set; } = AgentKind.Cursor;
     public AgentKind RightAgent { get; set; } = AgentKind.Codex;
@@ -70,6 +73,126 @@ internal sealed class AppSettings
 
     private static bool IsLaunchAtLoginEnabled()
     {
+        return File.Exists(StartupShortcutPath) || HasRegistryStartupValue();
+    }
+
+    private static void SetLaunchAtLogin(bool enabled)
+    {
+        if (enabled)
+        {
+            // The Startup shortcut launches with an application-level delay. It is
+            // manageable by standard Windows accounts and avoids racing USB services
+            // or secondary drives immediately after sign-in.
+            if (CreateStartupShortcut())
+            {
+                DeleteRegistryStartupValue();
+                return;
+            }
+
+            // Keep the previous Run-key behavior as a no-prompt fallback when Windows
+            // Script Host shortcut creation is unavailable.
+            SetRegistryStartupValue();
+            return;
+        }
+
+        DeleteStartupShortcut();
+        DeleteRegistryStartupValue();
+    }
+
+    private static string StartupShortcutPath => Path.Combine(
+        Environment.GetFolderPath(Environment.SpecialFolder.Startup),
+        StartupShortcutName);
+
+    private static bool CreateStartupShortcut()
+    {
+        var executable = Environment.ProcessPath;
+        if (string.IsNullOrWhiteSpace(executable))
+        {
+            return false;
+        }
+
+        object? shell = null;
+        object? shortcut = null;
+        try
+        {
+            var shellType = Type.GetTypeFromProgID("WScript.Shell");
+            if (shellType is null)
+            {
+                return false;
+            }
+
+            Directory.CreateDirectory(Path.GetDirectoryName(StartupShortcutPath)!);
+            shell = Activator.CreateInstance(shellType);
+            if (shell is null)
+            {
+                return false;
+            }
+
+            shortcut = shellType.InvokeMember(
+                "CreateShortcut",
+                BindingFlags.InvokeMethod,
+                null,
+                shell,
+                [StartupShortcutPath]);
+            if (shortcut is null)
+            {
+                return false;
+            }
+
+            var shortcutType = shortcut.GetType();
+            SetShortcutProperty(shortcutType, shortcut, "TargetPath", executable);
+            SetShortcutProperty(shortcutType, shortcut, "Arguments", "--startup --background");
+            SetShortcutProperty(shortcutType, shortcut, "WorkingDirectory", Path.GetDirectoryName(executable)!);
+            SetShortcutProperty(shortcutType, shortcut, "IconLocation", $"{executable},0");
+            SetShortcutProperty(shortcutType, shortcut, "Description", "Launch NJC AI Monitor after Windows sign-in");
+            shortcutType.InvokeMember("Save", BindingFlags.InvokeMethod, null, shortcut, null);
+            return File.Exists(StartupShortcutPath);
+        }
+        catch
+        {
+            return false;
+        }
+        finally
+        {
+            ReleaseComObject(shortcut);
+            ReleaseComObject(shell);
+        }
+    }
+
+    private static void SetShortcutProperty(Type shortcutType, object shortcut, string name, string value)
+    {
+        shortcutType.InvokeMember(name, BindingFlags.SetProperty, null, shortcut, [value]);
+    }
+
+    private static void ReleaseComObject(object? value)
+    {
+        try
+        {
+            if (value is not null && Marshal.IsComObject(value))
+            {
+                _ = Marshal.FinalReleaseComObject(value);
+            }
+        }
+        catch
+        {
+            // COM cleanup should never affect launch-at-login registration.
+        }
+    }
+
+    private static void DeleteStartupShortcut()
+    {
+        try
+        {
+            File.Delete(StartupShortcutPath);
+        }
+        catch
+        {
+            // The UI reports the effective value on next load; running remains unaffected.
+        }
+    }
+
+    private static bool HasRegistryStartupValue()
+    {
         try
         {
             using var key = Registry.CurrentUser.OpenSubKey(RunKey);
@@ -81,20 +204,26 @@ internal sealed class AppSettings
         }
     }
 
-    private static void SetLaunchAtLogin(bool enabled)
+    private static void SetRegistryStartupValue()
+    {
+        try
+        {
+            var executable = Environment.ProcessPath ?? string.Empty;
+            using var key = Registry.CurrentUser.CreateSubKey(RunKey);
+            key.SetValue(RunValue, $"\"{executable}\" --background");
+        }
+        catch
+        {
+            // The UI reports the effective value on next load; running remains unaffected.
+        }
+    }
+
+    private static void DeleteRegistryStartupValue()
     {
         try
         {
             using var key = Registry.CurrentUser.CreateSubKey(RunKey);
-            if (enabled)
-            {
-                var executable = Environment.ProcessPath ?? string.Empty;
-                key.SetValue(RunValue, $"\"{executable}\" --background");
-            }
-            else
-            {
-                key.DeleteValue(RunValue, false);
-            }
+            key.DeleteValue(RunValue, false);
         }
         catch
         {

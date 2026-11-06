@@ -112,7 +112,8 @@ The application stays in the system tray:
 
 - Double-click the tray icon to open the local preview.
 - Open **Settings** to configure theme, launch at login, rotation, JPEG quality, weather, and
-  completion alerts.
+  completion alerts. Launch at login uses a 20-second delayed current-user startup shortcut, with
+  the current-user Run key retained as a fallback when shortcut creation is unavailable.
 - Use **Reconnect LCD** after closing another program that owned the device.
 - Use **USB Diagnostics** to inspect discovery, profile, and driver status.
 - Use **Export Current Frame** to save the current 1920×400 image.
