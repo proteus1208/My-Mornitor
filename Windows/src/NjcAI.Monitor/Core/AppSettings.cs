@@ -22,6 +22,11 @@ internal sealed class AppSettings
     public int ActiveFramesPerSecond { get; set; } = 15;
     public bool RotateDisplay180 { get; set; }
     public ColorTheme Theme { get; set; } = ColorTheme.BitcoinOrange;
+    public AgentKind? QuotaPrimaryAgent1 { get; set; } = AgentKind.Codex;
+    public AgentKind? QuotaPrimaryAgent2 { get; set; } = AgentKind.Grok;
+    public bool ShowCodexQuotaProgress { get; set; }
+    public bool ShowClaudeQuotaProgress { get; set; } = true;
+    public bool ShowGrokQuotaProgress { get; set; }
     public string WeatherLocationName { get; set; } = "Sydney";
     public double WeatherLatitude { get; set; } = -33.8688;
     public double WeatherLongitude { get; set; } = 151.2093;
@@ -44,6 +49,7 @@ internal sealed class AppSettings
                     {
                         settings.Theme = ColorTheme.BitcoinOrange;
                     }
+                    settings.NormalizeQuotaSettings();
                     settings.LaunchAtLogin = IsLaunchAtLoginEnabled();
                     if (settings.LaunchAtLogin)
                     {
@@ -63,6 +69,7 @@ internal sealed class AppSettings
 
     public void Save()
     {
+        NormalizeQuotaSettings();
         Directory.CreateDirectory(DataDirectory);
         File.WriteAllText(SettingsPath, JsonSerializer.Serialize(this, new JsonSerializerOptions
         {
@@ -70,6 +77,21 @@ internal sealed class AppSettings
         }));
         SetLaunchAtLogin(LaunchAtLogin);
     }
+
+    private void NormalizeQuotaSettings()
+    {
+        if (!IsQuotaAgent(QuotaPrimaryAgent1))
+        {
+            QuotaPrimaryAgent1 = null;
+        }
+        if (!IsQuotaAgent(QuotaPrimaryAgent2) || QuotaPrimaryAgent2 == QuotaPrimaryAgent1)
+        {
+            QuotaPrimaryAgent2 = null;
+        }
+    }
+
+    internal static bool IsQuotaAgent(AgentKind? kind) => kind is
+        AgentKind.Codex or AgentKind.Claude or AgentKind.Grok;
 
     private static bool IsLaunchAtLoginEnabled()
     {

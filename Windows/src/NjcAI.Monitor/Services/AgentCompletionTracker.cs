@@ -96,6 +96,7 @@ internal sealed class AgentCompletionTracker
                 Codex = Decorate(snapshot.Codex),
                 Cursor = Decorate(snapshot.Cursor),
                 CodexSessions = snapshot.CodexSessions?.Select(Decorate).ToArray(),
+                GrokAgent = Decorate(snapshot.Grok),
             };
             return new AgentCompletionUpdate(
                 decorated, completed, OrderedPendingAlerts(), pendingChanged);

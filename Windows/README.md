@@ -25,15 +25,21 @@ token, plan, or allowance information. Conversation text is never shown on the L
 
 ## Agent lifecycle
 
-The application reads local Codex, Cursor, and Claude Code session records. Codex guardian or
+The application reads local Codex, Cursor, Claude Code, and Grok Bot session records. Codex guardian or
 internal child activity is aggregated into its user-owned parent chat instead of occupying a
 separate panel.
+
+Grok Bot integration reads its local selected-session roster and weekly usage cache. It does not
+require a Grok API key or send Grok account data anywhere.
+
+The AI Quota card is configurable in Settings: choose zero, one, or two primary gauges, then add
+any Codex, Claude Code, or Grok Bot square-meter rows independently.
 
 | State | Meaning | Transition |
 |---|---|---|
 | `Agent Working` | The agent is reasoning, writing commentary, or using tools | A final, completed, or aborted event is recorded |
 | `Task Completed` | Work finished and its alert is not acknowledged | The user confirms the desktop card or clears alerts from the tray |
-| `Waiting for You` | The reply is complete and acknowledged | The session leaves the display after 10 minutes without activity |
+| `Waiting for You` | The reply is complete and acknowledged | The session leaves the display after 5 minutes without activity |
 
 An unacknowledged completion remains visible and is restored after restart. If the same chat starts
 working again before acknowledgement, its stale alert closes automatically and the panel returns

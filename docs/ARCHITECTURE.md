@@ -18,7 +18,7 @@ added there.
 ## Source map
 
 - `Core/` — immutable data models, settings, logging, demo data, and the single-instance guard.
-- `Services/` — agent log parsing, completion tracking, market/news/weather collection, system
+- `Services/` — agent log and Grok Bot local-cache parsing, completion tracking, market/news/weather collection, system
   metrics, and dynamic panel selection. Codex child/guardian activity is aggregated into its
   user-owned parent chat instead of becoming a separate visible panel.
 - `Rendering/` — converts a `DashboardSnapshot` into the fixed 1920×400 holographic dashboard;
@@ -32,7 +32,7 @@ added there.
 
 `DynamicPanelResolver` selects up to four sessions, ordered by working state, unacknowledged
 completion, attention state, and last activity. It applies a 30-second replacement cooldown to
-avoid panel churn. Sessions with ordinary activity leave the dashboard 10 minutes after their last
+avoid panel churn. Sessions with ordinary activity leave the dashboard 5 minutes after their last
 event; an unacknowledged completion remains until the user confirms it. A running turn may stay in
 the working state for up to 30 minutes without a new event so a long tool call is not mislabeled.
 When that same session records a newer working event, `AgentCompletionTracker` automatically removes

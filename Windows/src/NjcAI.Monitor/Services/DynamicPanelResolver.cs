@@ -14,7 +14,7 @@ internal sealed class DynamicPanelResolver
         TimeSpan? activityWindow = null,
         TimeSpan? replacementCooldown = null)
     {
-        _activityWindow = activityWindow ?? TimeSpan.FromMinutes(10);
+        _activityWindow = activityWindow ?? TimeSpan.FromMinutes(5);
         _replacementCooldown = replacementCooldown ?? TimeSpan.FromSeconds(30);
     }
 

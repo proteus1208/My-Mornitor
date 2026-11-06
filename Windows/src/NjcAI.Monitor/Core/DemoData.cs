@@ -39,6 +39,11 @@ internal static class DemoData
             AgentKind.Cursor, true, 0, 0, DateTime.Now.AddMinutes(-30),
             "dashboard", "Waiting for a new agent message…", false, false,
             null, "composer", null, null, null, null, null, false, "demo-cursor");
+        var grok = new AgentSnapshot(
+            AgentKind.Grok, true, 0, 0, null,
+            "Grok Bot", null, false, false, null, "SuperGrok",
+            null, null, null, 31.2, DateTime.Now.AddDays(4), false,
+            null, 10_080);
         var markets = new MarketSnapshot(
             [
                 new MarketQuote("BGBL", 75.86m, 0.42m, "AUD", DateTime.Now.AddMinutes(-20), false,
@@ -108,10 +113,11 @@ internal static class DemoData
                 AgentSnapshot.Missing(AgentKind.Claude),
                 idleCodex,
                 AgentSnapshot.Missing(AgentKind.Cursor),
-                [idleCodex])
+                [idleCodex],
+                grok)
             : completed
-                ? new AgentsSnapshot(claude, codex, cursor, [codex, completedSecondCodex])
-                : new AgentsSnapshot(claude, codex, cursor, [codex, codexSecond]);
+                ? new AgentsSnapshot(claude, codex, cursor, [codex, completedSecondCodex], grok)
+                : new AgentsSnapshot(claude, codex, cursor, [codex, codexSecond], grok);
         return new DashboardSnapshot(system, agents,
             markets, news, weather);
     }

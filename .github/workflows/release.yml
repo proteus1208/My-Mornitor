@@ -50,11 +50,13 @@ jobs:
           Download the ZIP matching your architecture. Most Windows PCs use `win-x64`.
           Extract the complete folder, then run `NJC AI Monitor.exe`.
 
-          ## v0.2.1 highlights
+          ## v0.3.0 highlights
 
-          - More reliable launch at login through a current-user Startup shortcut
-          - 20-second delayed startup to let USB services and secondary drives become ready
-          - Silent single-instance handling for background and startup launches
+          - Grok Bot session detection, completion alerts, and local weekly quota support
+          - Configurable AI Quota panel with up to two primary gauges and optional progress rows
+          - Five-minute `Waiting for You` display window while unacknowledged completions remain persistent
+          - Improved Grok completion detection based on local queue and transcript-cache activity
+          - Updated English and Chinese documentation plus refreshed previews for all five themes
 
           ## Requirements
 

@@ -3,7 +3,7 @@
 [English](README.md) · **简体中文**
 
 面向 Windows 10/11 和利民 Trofeo Vision 11.3 LCD 的 AI Agent 桌面监控程序。
-程序会把 Codex、Cursor、Claude Code、本机内存、股票/加密货币行情、新闻和天气
+程序会把 Codex、Cursor、Claude Code、Grok Bot、本机内存、股票/加密货币行情、新闻和天气
 渲染为 1920×400 五栏仪表盘，并通过 USB 发送到 LCD；没有连接屏幕时也可以使用本机预览。
 
 ## 界面预览
@@ -59,7 +59,9 @@
 
 ## 主要功能
 
-- 左侧四栏优先显示最近活跃的 Codex、Cursor 和 Claude Code 会话，并同时显示工作区与真实聊天标题；
+- 左侧四栏优先显示最近活跃的 Codex、Cursor、Claude Code 和 Grok Bot 会话，并同时显示工作区与真实聊天标题；
+- 从 Grok Bot 本地会话列表与每周用量缓存读取当前任务和剩余额度，无需 API Key；
+- AI Quota 支持选择最多两个主要圆环，并可独立添加 Codex、Claude Code 或 Grok Bot 方格进度条；
 - Agent 状态统一为 `Agent Working`、`Task Completed` 和 `Waiting for You`；工作状态使用动态边框，完成提醒持续闪烁并显示不会自动消失的桌面确认卡片；
 - AI 会话不足时，依次使用 MARKETS、NEWS、AI QUOTA 和未来天气 FORECAST 补位；
 - 最右一栏固定整合时间、天气、CPU、GPU、内存和进程数；
@@ -85,7 +87,7 @@
 
 `Forecast` 只显示未来数小时的预报，最右固定栏显示当前天气，因此两者不会重复。Agent 面板显示工作区/仓库名称、真实聊天标题、状态、Token/计划进度；不在小屏幕上展示对话正文。
 
-Agent 状态按以下方式转换：`Agent Working` → `Task Completed` → 确认提醒后 `Waiting for You`。如果未确认提醒便直接继续同一会话，旧提醒会自动清除并立即回到 `Agent Working`。会话最后活动超过 10 分钟后退出动态栏；没有继续对话时，未确认的完成提醒会一直保留。
+Agent 状态按以下方式转换：`Agent Working` → `Task Completed` → 确认提醒后 `Waiting for You`。如果未确认提醒便直接继续同一会话，旧提醒会自动清除并立即回到 `Agent Working`。会话最后活动超过 5 分钟后退出动态栏；没有继续对话时，未确认的完成提醒会一直保留。
 
 ## 运行要求
 
