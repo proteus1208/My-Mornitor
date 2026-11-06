@@ -50,6 +50,12 @@ jobs:
           Download the ZIP matching your architecture. Most Windows PCs use `win-x64`.
           Extract the complete folder, then run `NJC AI Monitor.exe`.
 
+          ## v0.2.1 highlights
+
+          - More reliable launch at login through a current-user Startup shortcut
+          - 20-second delayed startup to let USB services and secondary drives become ready
+          - Silent single-instance handling for background and startup launches
+
           ## Requirements
 
           - Windows 10 1809 or newer; Windows 11 is recommended

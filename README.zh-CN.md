@@ -68,7 +68,7 @@
 - 内置 Bitcoin Orange、Web3 Emerald、Graphite Titanium、Cyber Neon 和 Solana Aurora 五套同构配色主题，
   所选主题也会同步应用到任务完成提醒；
 - 支持 Trofeo Vision 11.3 的 1920×400 LY USB 协议；
-- 支持托盘运行、登录自启、单实例保护、USB 热插拔、本机预览和 180° 旋转；
+- 支持托盘运行、通过启动快捷方式在登录后延迟 20 秒可靠自启、单实例保护、USB 热插拔、本机预览和 180° 旋转；
 - 发布包自带程序运行环境和 USB 依赖，不要求用户另外安装 .NET。
 
 ## 屏幕布局
